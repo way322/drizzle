@@ -1,0 +1,77 @@
+# Быстрая проверка в Docker (БД + миграции + Next.js)
+#
+#   docker compose up --build
+#
+# Сайт: http://localhost:3000
+# Postgres (опционально с хоста): localhost:5432 user kitsune / kitsune
+#
+# Локальный npm run dev не затрагивается — используй свой .env как раньше.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kitsune
+      POSTGRES_PASSWORD: kitsune
+      POSTGRES_DB: kitsune
+    volumes:
+      - kitsune_pg:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kitsune -d kitsune"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-mirror.gcr.io/library/node:20-alpine}
+    environment:
+      DATABASE_URL: postgresql://kitsune:kitsune@db:5432/kitsune
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-mirror.gcr.io/library/node:20-alpine}
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://kitsune:kitsune@db:5432/kitsune
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-docker-dev-secret-change-in-real-deploy-32chars}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NODE_ENV: production
+      # Из корневого .env (рядом с compose): иначе кнопки Google/Яндекс скрыты
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Заливка демо-данных из sql.sql (после миграций). Запуск: docker compose --profile seed up --build
+  seed:
+    profiles: ["seed"]
+    image: postgres:16-alpine
+    volumes:
+      - ./sql.sql:/seed.sql:ro
+    environment:
+      PGPASSWORD: kitsune
+    command: ["psql", "-h", "db", "-U", "kitsune", "-d", "kitsune", "-v", "ON_ERROR_STOP=1", "-f", "/seed.sql"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  kitsune_pg:

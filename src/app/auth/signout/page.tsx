@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, LogOut, ShieldQuestion, User } from "lucide-react";
 
-export default function SignOutPage() {
+function SignOutContent() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
@@ -111,5 +111,19 @@ export default function SignOutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignOutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative min-h-screen overflow-hidden bg-[#07070d] flex items-center justify-center text-gray-300">
+          Загрузка…
+        </div>
+      }
+    >
+      <SignOutContent />
+    </Suspense>
   );
 }

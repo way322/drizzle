@@ -146,20 +146,24 @@ export default async function Home() {
                 <span className="block bg-gradient-to-r from-purple-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
                   красиво хранить,
                 </span>
-                <span className="block text-white/95">искать и отмечать аниме</span>
+                <span className="mt-2 block text-[1.375rem] font-bold leading-snug tracking-tight text-white/93 sm:mt-3 sm:text-5xl sm:font-black sm:leading-tight sm:text-white/95 xl:text-7xl">
+                  искать и отмечать аниме
+                </span>
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-300 sm:text-xl">
-                Каталог, быстрый поиск, личные списки, избранное, оценки и удобная
-                админка для наполнения базы. Всё в одном аккуратном интерфейсе.
-              </p>
+              <div className="mt-5 max-w-2xl rounded-[22px] border border-white/12 bg-gradient-to-b from-white/[0.07] to-white/[0.02] px-4 py-4 shadow-lg shadow-black/20 backdrop-blur-md sm:mt-6 sm:rounded-none sm:border-0 sm:bg-none sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+                <p className="text-[15px] font-medium leading-7 text-white/95 sm:text-xl sm:font-normal sm:leading-8 sm:text-gray-200">
+                  Каталог, быстрый поиск, личные списки, избранное, оценки и удобная админка
+                  для наполнения базы.
+                </p>
+              </div>
 
-              <div className="mt-8 flex flex-wrap gap-4">
+              <div className="mx-auto mt-8 flex w-full max-w-md flex-col items-stretch gap-3 sm:mx-0 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:gap-4">
                 {isAuthed ? (
                   <>
                     <Link
                       href="/catalog"
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-4 font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:scale-[1.02] hover:from-purple-700 hover:to-violet-700"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-4 font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:scale-[1.02] hover:from-purple-700 hover:to-violet-700 sm:w-auto sm:justify-start"
                     >
                       Открыть каталог
                       <ArrowRight className="h-5 w-5" />
@@ -167,7 +171,7 @@ export default async function Home() {
 
                     <Link
                       href="/profile"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/8 px-6 py-4 font-semibold text-white backdrop-blur-md transition hover:bg-white/12"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/8 px-6 py-4 font-semibold text-white backdrop-blur-md transition hover:bg-white/12 sm:w-auto sm:justify-start"
                     >
                       Перейти в профиль
                     </Link>
@@ -175,7 +179,7 @@ export default async function Home() {
                     {isAdmin && (
                       <Link
                         href="/admin"
-                        className="inline-flex items-center gap-2 rounded-2xl border border-purple-400/30 bg-purple-500/10 px-6 py-4 font-semibold text-purple-100 transition hover:bg-purple-500/15"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-purple-400/30 bg-purple-500/10 px-6 py-4 font-semibold text-purple-100 transition hover:bg-purple-500/15 sm:w-auto sm:justify-start"
                       >
                         <Shield className="h-5 w-5" />
                         Админ-панель
@@ -186,7 +190,7 @@ export default async function Home() {
                   <>
                     <Link
                       href="/auth/register"
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-4 font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:scale-[1.02] hover:from-purple-700 hover:to-violet-700"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-4 font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:scale-[1.02] hover:from-purple-700 hover:to-violet-700 sm:w-auto sm:justify-start"
                     >
                       Создать аккаунт
                       <ArrowRight className="h-5 w-5" />
@@ -194,7 +198,7 @@ export default async function Home() {
 
                     <Link
                       href="/auth/login"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/8 px-6 py-4 font-semibold text-white backdrop-blur-md transition hover:bg-white/12"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/8 px-6 py-4 font-semibold text-white backdrop-blur-md transition hover:bg-white/12 sm:w-auto sm:justify-start"
                     >
                       Войти
                     </Link>
@@ -202,7 +206,7 @@ export default async function Home() {
                 )}
               </div>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mx-auto mt-8 flex w-full max-w-md flex-wrap justify-center gap-x-2 gap-y-2 sm:mx-0 sm:max-w-none sm:justify-start sm:gap-x-3 sm:gap-y-3">
                 <QuickLink href="/catalog?sort=rating" label="Лучшее по рейтингу" />
                 <QuickLink href="/catalog?status=ongoing" label="Сейчас выходят" />
                 <QuickLink href="/catalog?status=completed" label="Завершённые" />
@@ -217,24 +221,26 @@ export default async function Home() {
             </div>
 
             <div className="relative">
-              <div className="rounded-[32px] border border-white/10 bg-white/6 p-4 shadow-2xl backdrop-blur-xl">
-                <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 shadow-lg shadow-purple-500/25">
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.06] p-4 shadow-xl backdrop-blur-xl sm:rounded-[32px] sm:p-4 sm:shadow-2xl">
+                <div className="max-sm:p-0 sm:rounded-[28px] sm:border sm:border-white/10 sm:bg-gradient-to-br sm:from-white/10 sm:to-white/5 sm:p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 shadow-lg shadow-purple-500/25 sm:h-14 sm:w-14">
                         <Image src="/fox.png" alt="Kitsune" width={28} height={28} />
                       </div>
-                      <div>
-                        <div className="text-sm text-gray-400">Быстрый старт</div>
-                        <div className="text-xl font-bold text-white">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium uppercase tracking-[0.12em] text-purple-200/80 sm:text-sm sm:font-normal sm:normal-case sm:tracking-normal sm:text-gray-400">
+                          Быстрый старт
+                        </div>
+                        <div className="mt-0.5 text-lg font-bold leading-snug text-white sm:mt-0 sm:text-xl">
                           {isAuthed
                             ? `Привет, ${session?.user?.name ?? "пользователь"}`
                             : "Добро пожаловать"}
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
-                      Нажми / для поиска
+                    <div className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-center text-xs leading-snug text-gray-300 sm:w-auto sm:shrink-0 sm:rounded-full sm:py-1.5 sm:text-left">
+                      Нажми <kbd className="rounded border border-white/15 bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-white/90 sm:text-xs">/</kbd> для поиска
                     </div>
                   </div>
 

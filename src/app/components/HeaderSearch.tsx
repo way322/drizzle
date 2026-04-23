@@ -145,7 +145,7 @@ export default function HeaderSearch() {
   };
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative w-full md:max-w-[22rem]">
       <div className="relative">
         <input
           ref={inputRef}
@@ -154,7 +154,7 @@ export default function HeaderSearch() {
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder="Поиск аниме… (нажми /)"
-          className="w-44 sm:w-64 md:w-80 bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white outline-none focus:border-purple-400/60"
+          className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white outline-none focus:border-purple-400/60"
         />
 
         {q.trim().length > 0 && (
@@ -176,7 +176,7 @@ export default function HeaderSearch() {
       </div>
 
       {open && (canSearch || loading) && (
-        <div className="absolute mt-2 w-[min(520px,calc(100vw-24px))] right-0 md:right-auto md:left-0 bg-[#0b0b12]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[60]">
+        <div className="absolute left-0 right-0 z-[60] mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0b12]/95 shadow-2xl backdrop-blur-xl md:right-auto md:w-[min(520px,calc(100vw-24px))]">
           <div className="px-4 py-2 text-xs text-gray-400 border-b border-white/10 flex items-center justify-between">
             <span>{loading ? "Ищу…" : items.length ? `Найдено: ${items.length}` : "Ничего не найдено"}</span>
             <span className="hidden sm:inline">Enter — открыть • Esc — закрыть</span>

@@ -1,7 +1,13 @@
-// next.config.ts
 import type { NextConfig } from "next";
 
+
+
 const nextConfig: NextConfig = {
+  output: "standalone",
+  poweredByHeader: false,
+  turbopack: {
+    root: process.cwd(),
+  },
   images: {
     remotePatterns: [
       {
@@ -19,6 +25,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "avatars.yandex.net",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.mds.yandex.net",
       },
     ],
   },

@@ -27,10 +27,28 @@ function normalizeGenreNames(list: unknown): string[] {
 }
 
 function parseIdQuery(q: string): number | null {
-  const m = q.match(/^\s*(?:id|#)\s*[: ]\s*(\d+)\s*$/i);
-  if (!m) return null;
-  const n = Number.parseInt(m[1], 10);
-  return Number.isSafeInteger(n) ? n : null;
+  const s = q.trim();
+  if (!s) return null;
+
+  const compactHash = s.match(/^#(\d+)$/);
+  if (compactHash) {
+    const n = Number.parseInt(compactHash[1], 10);
+    return Number.isSafeInteger(n) ? n : null;
+  }
+
+  const compactId = s.match(/^id(\d+)$/i);
+  if (compactId) {
+    const n = Number.parseInt(compactId[1], 10);
+    return Number.isSafeInteger(n) ? n : null;
+  }
+
+  const spaced = s.match(/^\s*(?:id|#)\s*[: ]\s*(\d+)\s*$/i);
+  if (spaced) {
+    const n = Number.parseInt(spaced[1], 10);
+    return Number.isSafeInteger(n) ? n : null;
+  }
+
+  return null;
 }
 
 export const GET = withRole("admin", async (req) => {

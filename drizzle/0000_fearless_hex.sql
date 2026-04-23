@@ -48,7 +48,7 @@ CREATE TABLE "studios" (
 );
 --> statement-breakpoint
 CREATE TABLE "user_anime_status" (
-	"user_id" text NOT NULL,
+	"user_id" integer NOT NULL,
 	"anime_id" integer NOT NULL,
 	"status" varchar(20) NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,

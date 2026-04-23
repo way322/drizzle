@@ -233,8 +233,7 @@ export default function AdminClient() {
     if (query.trim()) parts.push(`запрос: “${query.trim()}”`);
     if (statusFilter !== "all") {
       parts.push(
-        `статус: ${
-          STATUS_FILTERS.find((x) => x.value === statusFilter)?.label ?? statusFilter
+        `статус: ${STATUS_FILTERS.find((x) => x.value === statusFilter)?.label ?? statusFilter
         }`
       );
     }
@@ -270,7 +269,7 @@ export default function AdminClient() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Поиск: название / описание…"
+                placeholder="Поиск: название, описание, #42 или id42…"
                 className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition placeholder:text-gray-400 focus:border-purple-400/60 md:w-80"
               />
 
@@ -353,31 +352,31 @@ export default function AdminClient() {
                 </div>
 
                 <Field label="Жанры">
-<div className="custom-dropdown-scroll max-h-56 space-y-2 overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3">
-  {genresLoading ? (
-    <div className="text-sm text-gray-400">Загрузка жанров…</div>
-  ) : allGenres.length === 0 ? (
-    <div className="text-sm text-gray-400">Жанров пока нет. Добавь ниже.</div>
-  ) : (
-    allGenres.map((g) => {
-      const checked = form.genres.includes(g);
-      return (
-        <label
-          key={g}
-          className="flex cursor-pointer items-center gap-2 text-sm text-gray-200"
-        >
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={() => toggleFormGenre(g)}
-            className="accent-purple-500"
-          />
-          <span className="truncate">{g}</span>
-        </label>
-      );
-    })
-  )}
-</div>
+                  <div className="custom-dropdown-scroll max-h-56 space-y-2 overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3">
+                    {genresLoading ? (
+                      <div className="text-sm text-gray-400">Загрузка жанров…</div>
+                    ) : allGenres.length === 0 ? (
+                      <div className="text-sm text-gray-400">Жанров пока нет. Добавь ниже.</div>
+                    ) : (
+                      allGenres.map((g) => {
+                        const checked = form.genres.includes(g);
+                        return (
+                          <label
+                            key={g}
+                            className="flex cursor-pointer items-center gap-2 text-sm text-gray-200"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleFormGenre(g)}
+                              className="accent-purple-500"
+                            />
+                            <span className="truncate">{g}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
 
                   <div className="mt-3 flex gap-2">
                     <input

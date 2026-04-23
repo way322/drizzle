@@ -9,6 +9,7 @@ type PageProps = {
     status?: string;
     sort?: string;
     ratingOrder?: string;
+    yearOrder?: string;
     yearFrom?: string;
     yearTo?: string;
     genres?: string;
@@ -31,6 +32,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   const status = (sp.status ?? "all") as any;
   const sort = (sp.sort ?? "new") as any;
   const ratingOrder = (sp.ratingOrder ?? "desc") as any;
+  const yearOrder = (sp.yearOrder ?? "desc") as any;
 
   const yearFrom = (sp.yearFrom ?? "").trim();
   const yearTo = (sp.yearTo ?? "").trim();
@@ -49,6 +51,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         status,
         sort,
         ratingOrder,
+        yearOrder,
         yearFrom,
         yearTo,
         genres: selectedGenres,

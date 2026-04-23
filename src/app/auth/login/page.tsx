@@ -1,9 +1,15 @@
 import LoginForm from "./LoginForm";
 import SocialButtons from "../components/SocialButtons";
+import {
+  hasAnyOAuthProvider,
+  isGoogleOAuthConfigured,
+  isYandexOAuthConfigured,
+} from "@/lib/oauth";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function LoginPage() {
+  const oauthEnabled = hasAnyOAuthProvider();
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#07070d]">
       <div className="absolute inset-0 overflow-hidden">
@@ -18,9 +24,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="rounded-[32px] border border-white/15 bg-white/8 p-8 shadow-2xl backdrop-blur-xl">
             <div className="mb-8 text-center">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-purple-200">
-                Добро пожаловать обратно
-              </div>
+
 
               <div className="mx-auto mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 shadow-lg shadow-purple-500/25">
                 <Image src="/fox.png" alt="Kitsune" width={32} height={32} className="w-8 h-8" />
@@ -32,13 +36,20 @@ export default function LoginPage() {
 
             <LoginForm />
 
-            <div className="my-6 flex items-center">
-              <div className="h-px flex-1 bg-white/15" />
-              <span className="px-4 text-sm text-gray-400">или</span>
-              <div className="h-px flex-1 bg-white/15" />
-            </div>
+            {oauthEnabled && (
+              <>
+                <div className="my-6 flex items-center">
+                  <div className="h-px flex-1 bg-white/15" />
+                  <span className="px-4 text-sm text-gray-400">или</span>
+                  <div className="h-px flex-1 bg-white/15" />
+                </div>
 
-            <SocialButtons isLogin={true} />
+                <SocialButtons
+                  showGoogle={isGoogleOAuthConfigured()}
+                  showYandex={isYandexOAuthConfigured()}
+                />
+              </>
+            )}
 
             <div className="mt-8 text-center">
               <p className="text-gray-400">

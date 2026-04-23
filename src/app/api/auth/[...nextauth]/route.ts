@@ -7,56 +7,73 @@ import bcrypt from "bcrypt";
 import { db } from "../../../../server/db";
 import { users } from "../../../../server/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  isGoogleOAuthConfigured,
+  isYandexOAuthConfigured,
+} from "../../../../lib/oauth";
+
+const providers: NextAuthOptions["providers"] = [
+  CredentialsProvider({
+    name: "credentials",
+    credentials: {
+      email: { label: "Email", type: "text" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials.password) return null;
+
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, credentials.email),
+      });
+
+      if (!user || !user.passwordHash) return null;
+
+      const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+      if (!isValid) return null;
+      return {
+        id: String(user.id),
+        email: user.email,
+        name: user.username,
+        image: null,
+        role: (user.role as any) ?? "user",
+      };
+    },
+  }),
+];
+
+if (isGoogleOAuthConfigured()) {
+  providers.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    })
+  );
+}
+
+if (isYandexOAuthConfigured()) {
+  providers.push(
+    YandexProvider({
+      clientId: process.env.YANDEX_CLIENT_ID!,
+      clientSecret: process.env.YANDEX_CLIENT_SECRET!,
+    })
+  );
+}
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+
   session: {
     strategy: "jwt",
   },
 
-pages: {
-  signIn: "/auth/login",
-  signOut: "/auth/signout",
-  error: "/auth/error",
-  newUser: "/auth/register",
-},
+  pages: {
+    signIn: "/auth/login",
+    signOut: "/auth/signout",
+    error: "/auth/error",
+    newUser: "/auth/register",
+  },
 
-  providers: [
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.email, credentials.email),
-        });
-
-        if (!user || !user.passwordHash) return null;
-
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!isValid) return null;
-        return {
-          id: String(user.id),
-          email: user.email,
-          name: user.username,
-          role: (user.role as any) ?? "user",
-        };
-      },
-    }),
-
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-
-    YandexProvider({
-      clientId: process.env.YANDEX_CLIENT_ID!,
-      clientSecret: process.env.YANDEX_CLIENT_SECRET!,
-    }),
-  ],
+  providers,
 
   callbacks: {
     async signIn({ user, account }) {
@@ -92,6 +109,7 @@ pages: {
           token.email = dbUser.email;
           token.name = dbUser.username;
           token.role = (dbUser.role as any) ?? "user";
+          token.image = user.image ?? token.image ?? null;
         }
       }
 
@@ -103,6 +121,7 @@ pages: {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = (token.name as string) ?? session.user.name;
+        session.user.image = (token.image as string | null | undefined) ?? session.user.image;
         session.user.role = (token.role as any) ?? "user";
       }
 

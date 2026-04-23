@@ -246,33 +246,60 @@ export default async function AnimePlayerPage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="mt-8 rounded-[30px] border border-white/10 bg-black/20 p-6 shadow-xl backdrop-blur-xl">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-xl font-semibold text-white">Плеер</div>
-                  <div className="mt-1 text-sm text-gray-400">Онлайн просмотр</div>
-                </div>
-
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
-                  iframe player
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-[26px] border border-white/10 bg-black">
-                <div className="aspect-video w-full">
-                  {item.externalUrl ? (
-                    <iframe
-                      src={item.externalUrl}
-                      title={item.title}
-                      className="h-full w-full"
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center px-6 text-center text-gray-400">
-                      Плеер пока не добавлен.
+            <div className="mt-8">
+              <div className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.08] to-black/20 shadow-xl backdrop-blur-xl sm:rounded-[30px]">
+                <div className="px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                      Смотреть онлайн
                     </div>
-                  )}
+
+                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-gray-300">
+                      iframe player
+                    </div>
+                  </div>
+
+                  <div className="max-w-xl">
+                    <div className="text-xl font-semibold text-white sm:text-2xl">Плеер</div>
+                    <div className="mt-1 text-sm leading-6 text-gray-400">
+                      На телефоне блок адаптирован под быстрый просмотр и полноэкранный режим.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-0 pb-0 sm:px-6 sm:pb-6">
+                  <div className="relative overflow-hidden border-y border-white/10 bg-black sm:rounded-[26px] sm:border">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/55 via-black/15 to-transparent" />
+                    <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2">
+                      <span className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
+                        {item.releaseYear ?? "—"}
+                      </span>
+                      <span className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
+                        Full width mobile
+                      </span>
+                    </div>
+
+                    <div className="aspect-[16/10] w-full sm:aspect-video">
+                      {item.externalUrl ? (
+                        <iframe
+                          src={item.externalUrl}
+                          title={item.title}
+                          className="h-full w-full"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_35%)] px-6 text-center">
+                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                            Плеер недоступен
+                          </div>
+                          <div className="mt-3 max-w-xs text-sm leading-6 text-gray-400">
+                            Для этого аниме ещё не добавлена ссылка на онлайн просмотр.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Heart, Loader2 } from "lucide-react";
 
 import SelectMenu, { type SelectOption } from "./SelectMenu";
@@ -39,9 +40,19 @@ async function sendJson(url: string, body: unknown) {
     body: JSON.stringify(body),
   });
 
+  if (res.status === 401) {
+    const err = new Error("AUTH_REQUIRED");
+    (err as Error & { code?: string }).code = "AUTH_REQUIRED";
+    throw err;
+  }
+
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось выполнить запрос");
+    const payload = await res.json().catch(() => null);
+    const message =
+      (payload && typeof payload.error === "string" && payload.error) ||
+      (await res.text().catch(() => "")) ||
+      "Не удалось выполнить запрос";
+    throw new Error(message);
   }
 
   return res;
@@ -53,6 +64,8 @@ export default function AnimeUserActions({
   initialRating,
   initialLoved,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [status, setStatus] = useState<string>(initialStatus ?? "");
   const [rating, setRating] = useState<string>(
     initialRating ? String(initialRating) : ""
@@ -71,6 +84,11 @@ export default function AnimeUserActions({
     setSuccess(null);
   };
 
+  const handleAuthRequired = () => {
+    const callbackUrl = encodeURIComponent(pathname || "/");
+    router.push(`/auth/login?callbackUrl=${callbackUrl}`);
+  };
+
   const handleToggleFavorite = async () => {
     clearMessages();
     setFavoritePending(true);
@@ -78,7 +96,7 @@ export default function AnimeUserActions({
     try {
       const nextLoved = !loved;
 
-      await sendJson("/api/favorites/toggle", {
+      await sendJson("/api/user/loved", {
         animeId,
         loved: nextLoved,
       });
@@ -86,6 +104,10 @@ export default function AnimeUserActions({
       setLoved(nextLoved);
       setSuccess(nextLoved ? "Добавлено в любимое" : "Удалено из любимого");
     } catch (e) {
+      if ((e as Error & { code?: string })?.code === "AUTH_REQUIRED") {
+        handleAuthRequired();
+        return;
+      }
       setError(e instanceof Error ? e.message : "Ошибка при обновлении избранного");
     } finally {
       setFavoritePending(false);
@@ -98,13 +120,17 @@ export default function AnimeUserActions({
 
     startStatusTransition(async () => {
       try {
-        await sendJson("/api/user-anime-status", {
+        await sendJson("/api/user/anime-status", {
           animeId,
-          status: value || null,
+          status: value || "none",
         });
 
         setSuccess("Статус сохранён");
       } catch (e) {
+        if ((e as Error & { code?: string })?.code === "AUTH_REQUIRED") {
+          handleAuthRequired();
+          return;
+        }
         setError(e instanceof Error ? e.message : "Ошибка при сохранении статуса");
       }
     });
@@ -116,13 +142,17 @@ export default function AnimeUserActions({
 
     startRatingTransition(async () => {
       try {
-        await sendJson("/api/ratings", {
+        await sendJson("/api/user/rating", {
           animeId,
           value: value === "" ? null : Number(value),
         });
 
         setSuccess(value === "" ? "Оценка удалена" : "Оценка сохранена");
       } catch (e) {
+        if ((e as Error & { code?: string })?.code === "AUTH_REQUIRED") {
+          handleAuthRequired();
+          return;
+        }
         setError(e instanceof Error ? e.message : "Ошибка при сохранении оценки");
       }
     });

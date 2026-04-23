@@ -4,18 +4,66 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Heart,
+  type LucideIcon,
+} from "lucide-react";
 import SelectMenu, { type SelectOption } from "../components/SelectMenu";
 
 type WatchStatus = "watching" | "planned" | "dropped" | "completed";
 type TabKey = WatchStatus | "loved";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "watching", label: "Смотрю" },
-  { key: "planned", label: "Отложено" },
-  { key: "dropped", label: "Брошено" },
-  { key: "completed", label: "Просмотрено" },
-  { key: "loved", label: "Любимое" },
+const TABS: {
+  key: TabKey;
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  accent: string;
+}[] = [
+  {
+    key: "watching",
+    label: "Смотрю",
+    hint: "То, что сейчас в процессе",
+    icon: Eye,
+    accent:
+      "from-sky-500/20 via-cyan-500/15 to-teal-500/15 text-sky-100 ring-sky-400/30",
+  },
+  {
+    key: "planned",
+    label: "Отложено",
+    hint: "Оставил на потом",
+    icon: Clock3,
+    accent:
+      "from-amber-500/20 via-orange-500/15 to-yellow-500/15 text-amber-100 ring-amber-400/30",
+  },
+  {
+    key: "dropped",
+    label: "Брошено",
+    hint: "Не зашло или paused надолго",
+    icon: Ban,
+    accent:
+      "from-rose-500/20 via-pink-500/15 to-red-500/15 text-rose-100 ring-rose-400/30",
+  },
+  {
+    key: "completed",
+    label: "Просмотрено",
+    hint: "Уже досмотрено",
+    icon: CheckCircle2,
+    accent:
+      "from-emerald-500/20 via-green-500/15 to-teal-500/15 text-emerald-100 ring-emerald-400/30",
+  },
+  {
+    key: "loved",
+    label: "Любимое",
+    hint: "Лучшее из коллекции",
+    icon: Heart,
+    accent:
+      "from-fuchsia-500/20 via-pink-500/15 to-purple-500/15 text-fuchsia-100 ring-fuchsia-400/30",
+  },
 ];
 
 const STATUS_OPTIONS: SelectOption[] = [
@@ -205,18 +253,53 @@ export default function ProfileClient({
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="-mx-1 mt-8 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 xl:grid-cols-5">
               {TABS.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => loadTab(t.key)}
-                  className={`rounded-2xl border px-4 py-2 transition ${
+                  className={`group min-w-[176px] snap-start rounded-[26px] border p-4 text-left transition sm:min-w-0 ${
                     tab === t.key
-                      ? "border-white/30 bg-white/15 text-white"
-                      : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                      ? `bg-gradient-to-br ${t.accent} ring-1`
+                      : "border-white/10 bg-white/[0.05] text-gray-300 hover:border-white/20 hover:bg-white/[0.08]"
                   }`}
                 >
-                  {t.label} <span className="text-gray-400">({tabCounts[t.key]})</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${
+                        tab === t.key
+                          ? "border-white/15 bg-white/10"
+                          : "border-white/10 bg-black/20 text-gray-300 group-hover:border-white/15"
+                      }`}
+                    >
+                      <t.icon
+                        className={`h-5 w-5 ${
+                          tab === t.key && t.key === "loved" ? "fill-current" : ""
+                        }`}
+                      />
+                    </div>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        tab === t.key
+                          ? "bg-black/25 text-white"
+                          : "bg-white/8 text-gray-300 group-hover:bg-white/12"
+                      }`}
+                    >
+                      {tabCounts[t.key]}
+                    </span>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="text-base font-semibold text-white">{t.label}</div>
+                    <div
+                      className={`mt-1 text-xs leading-5 ${
+                        tab === t.key ? "text-white/75" : "text-gray-400"
+                      }`}
+                    >
+                      {t.hint}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

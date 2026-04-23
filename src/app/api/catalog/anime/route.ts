@@ -7,6 +7,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 type SortKey = "new" | "rating" | "year";
 type StatusKey = "all" | "ongoing" | "completed" | "hiatus";
 type RatingOrder = "desc" | "asc";
+type YearOrder = "desc" | "asc";
 
 function toInt(s: string | null, def: number) {
     const n = Number.parseInt(String(s ?? ""), 10);
@@ -28,6 +29,8 @@ export async function GET(req: Request) {
     const status = (searchParams.get("status") ?? "all") as StatusKey;
     const sort = (searchParams.get("sort") ?? "new") as SortKey;
     const ratingOrder = (searchParams.get("ratingOrder") ?? "desc") as RatingOrder;
+    const yearOrderRaw = searchParams.get("yearOrder") ?? "desc";
+    const yearOrder: YearOrder = yearOrderRaw === "asc" ? "asc" : "desc";
 
     const yearFromRaw = searchParams.get("yearFrom");
     const yearToRaw = searchParams.get("yearTo");
@@ -81,7 +84,13 @@ export async function GET(req: Request) {
                 ? [asc(ratingVal), desc(ratingsCountVal), desc(anime.createdAt)]
                 : [desc(ratingVal), desc(ratingsCountVal), desc(anime.createdAt)];
     } else if (sort === "year") {
-        orderBy = [desc(anime.releaseYear), desc(anime.createdAt)];
+        const nullYear = yearOrder === "asc" ? 9999 : 0;
+        const yearSortExpr = sql<number>`coalesce(${anime.releaseYear}, ${nullYear})`;
+
+        orderBy =
+            yearOrder === "asc"
+                ? [asc(yearSortExpr), desc(anime.createdAt)]
+                : [desc(yearSortExpr), desc(anime.createdAt)];
     } else {
         orderBy = [desc(anime.createdAt)];
     }

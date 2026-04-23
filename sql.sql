@@ -203,4 +203,20 @@ INSERT INTO genres (name) VALUES
 ('Гонки')
 ON CONFLICT (name) DO NOTHING;
 
+-- Администратор: iliyamalihin@yandex.ru
+-- Если пользователя ещё нет — создаётся с паролем KitsuneAdmin!2026 (смени после входа).
+-- Если запись с этой почтой уже есть — только выставляется role = admin (пароль не затирается).
+INSERT INTO users (username, email, password_hash, provider, role)
+VALUES (
+  'iliya',
+  'iliyamalihin@yandex.ru',
+  '$2b$10$vfmdBzuwz.lSpOIaBUxk1ew01gQFOQvVoDyUtEEs9SVsOeJ6ujJm6',
+  'local',
+  'admin'
+)
+ON CONFLICT (email) DO UPDATE SET
+  role = 'admin';
+
 COMMIT;
+
+
