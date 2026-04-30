@@ -1,6 +1,5 @@
 BEGIN;
-
--- Клинок, рассекающий демонов — Сезон 1
+ 
 WITH inserted AS (
   INSERT INTO anime (
     title, description, release_year, status, external_url
@@ -20,7 +19,6 @@ SELECT inserted.id,
        TRUE
 FROM inserted;
 
--- Магическая битва — Сезон 1
 WITH inserted AS (
   INSERT INTO anime (
     title, description, release_year, status, external_url
