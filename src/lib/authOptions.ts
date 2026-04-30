@@ -120,6 +120,23 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // JWT не обновляется сам по себе: без этого после смены аватара в БД в токене остаётся
+      // старый URL, файл в S3 уже удалён — после перезагрузки страницы картинка пропадает.
+      const userIdRaw = token.sub ?? token.id;
+      const userId =
+        userIdRaw != null ? Number.parseInt(String(userIdRaw), 10) : Number.NaN;
+      if (Number.isSafeInteger(userId)) {
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.id, userId),
+          columns: { avatarUrl: true, username: true, role: true },
+        });
+        if (dbUser) {
+          token.name = dbUser.username;
+          token.role = toAppRole(dbUser.role);
+          token.image = resolveClientAssetUrl(dbUser.avatarUrl) ?? null;
+        }
+      }
+
       token.image = resolveClientAssetUrl((token.image as string | null | undefined) ?? null) ?? null;
 
       return token;

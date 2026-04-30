@@ -93,6 +93,11 @@ export default function AnimeWatchPlayer({
   const lastProgressSaveAtRef = useRef<number>(0);
   const pendingAutoPlayNextRef = useRef(false);
 
+  type WebkitFullscreenVideo = HTMLVideoElement & {
+    webkitEnterFullscreen?: () => void;
+    webkitDisplayingFullscreen?: boolean;
+  };
+
   const load = async () => {
     if (!isAuthed) return;
     setLoading(true);
@@ -198,6 +203,22 @@ export default function AnimeWatchPlayer({
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current as WebkitFullscreenVideo | null;
+    if (!video) return;
+
+    const onWebkitBeginFullscreen = () => setIsFullscreen(true);
+    const onWebkitEndFullscreen = () => setIsFullscreen(false);
+
+    video.addEventListener("webkitbeginfullscreen", onWebkitBeginFullscreen as EventListener);
+    video.addEventListener("webkitendfullscreen", onWebkitEndFullscreen as EventListener);
+
+    return () => {
+      video.removeEventListener("webkitbeginfullscreen", onWebkitBeginFullscreen as EventListener);
+      video.removeEventListener("webkitendfullscreen", onWebkitEndFullscreen as EventListener);
+    };
+  }, [selectedEpisodeId]);
 
   const onTimeUpdate = () => {
     const ep = selectedEpisode;
@@ -352,7 +373,22 @@ export default function AnimeWatchPlayer({
 
   const enterFullscreen = async () => {
     const root = wrapperRef.current;
+    const video = videoRef.current as WebkitFullscreenVideo | null;
     if (!root) return;
+
+    if (video?.webkitDisplayingFullscreen) {
+      return;
+    }
+
+    if (
+      !document.fullscreenElement &&
+      typeof video?.webkitEnterFullscreen === "function"
+    ) {
+      video.webkitEnterFullscreen();
+      setIsFullscreen(true);
+      return;
+    }
+
     if (document.fullscreenElement) {
       await document.exitFullscreen().catch(() => null);
       return;
@@ -545,6 +581,7 @@ export default function AnimeWatchPlayer({
                   key={selectedEpisode.id}
                   src={selectedEpisode.streamUrl}
                   preload="metadata"
+                  playsInline
                   onTimeUpdate={onTimeUpdate}
                   onLoadedMetadata={(e) => {
                     const v = e.currentTarget as HTMLVideoElement;

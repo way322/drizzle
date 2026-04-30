@@ -5,7 +5,14 @@ import { eq } from "drizzle-orm";
 import { withAuth } from "../../../../../server/services/userService";
 import { db } from "../../../../../server/db";
 import { users } from "../../../../../server/db/schema";
-import { buildClientS3Url, getS3Bucket, getS3Client, getS3ConfigErrorMessage } from "../../../../../lib/s3";
+import {
+  buildClientS3Url,
+  deleteS3Object,
+  extractObjectKeyFromS3Url,
+  getS3Bucket,
+  getS3Client,
+  getS3ConfigErrorMessage,
+} from "../../../../../lib/s3";
 
 function sanitizeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -13,6 +20,11 @@ function sanitizeFileName(name: string) {
 
 export const POST = withAuth(async (req, ctx) => {
   try {
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.id, ctx.userId),
+      columns: { avatarUrl: true },
+    });
+
     const form = await req.formData();
     const file = form.get("file");
 
@@ -39,6 +51,11 @@ export const POST = withAuth(async (req, ctx) => {
 
     const avatarUrl = buildClientS3Url(objectKey);
     await db.update(users).set({ avatarUrl }).where(eq(users.id, ctx.userId));
+
+    const oldObjectKey = extractObjectKeyFromS3Url(existingUser?.avatarUrl);
+    if (oldObjectKey && oldObjectKey !== objectKey) {
+      await deleteS3Object(oldObjectKey).catch(() => null);
+    }
 
     return NextResponse.json({ success: true, avatarUrl, objectKey });
   } catch (err) {

@@ -8,14 +8,15 @@ import {
   userAnimeProgress,
   userPlayerSettings,
 } from "../../../../server/db/schema";
-import { withAuth } from "../../../../server/services/userService";
+import { createRequestContext, requireAuth } from "../../../../server/services/userService";
 import { resolveClientAssetUrl } from "../../../../lib/s3";
 
 type RouteCtx = { params: Promise<{ animeId: string }> };
 
-export const GET = withAuth<RouteCtx>(async (_req, ctx, routeCtx) => {
-  const params = routeCtx ? await routeCtx.params : null;
-  const animeId = Number.parseInt(params?.animeId ?? "", 10);
+export async function GET(_req: Request, routeCtx: RouteCtx) {
+  const ctx = requireAuth(await createRequestContext());
+  const params = await routeCtx.params;
+  const animeId = Number.parseInt(params.animeId ?? "", 10);
 
   if (!Number.isInteger(animeId)) {
     return NextResponse.json({ error: "Invalid animeId" }, { status: 400 });
@@ -97,4 +98,4 @@ export const GET = withAuth<RouteCtx>(async (_req, ctx, routeCtx) => {
         }
       : null,
   });
-});
+}

@@ -5,7 +5,13 @@ import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../../../../../server/db";
 import { animeDubbings, animeEpisodes } from "../../../../../server/db/schema";
 import { withRole } from "../../../../../server/services/userService";
-import { buildClientS3Url, getPublicS3BaseUrl, getS3Bucket, getS3Client } from "../../../../../lib/s3";
+import {
+  buildClientS3Url,
+  deleteS3Object,
+  getPublicS3BaseUrl,
+  getS3Bucket,
+  getS3Client,
+} from "../../../../../lib/s3";
 
 function parseTimeOrNull(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
@@ -104,6 +110,15 @@ export const POST = withRole("admin", async (req) => {
     generateObjectKey({ animeId, dubbingId, episodeNumber, title });
   const streamUrl = streamUrlRaw || buildClientS3Url(resolvedObjectKey);
 
+  const existingEpisode = await db.query.animeEpisodes.findFirst({
+    where: and(
+      eq(animeEpisodes.animeId, animeId),
+      eq(animeEpisodes.dubbingId, dubbingId),
+      eq(animeEpisodes.episodeNumber, episodeNumber)
+    ),
+    columns: { objectKey: true },
+  });
+
   const bucket = getS3Bucket();
   const s3 = getS3Client();
   try {
@@ -155,6 +170,11 @@ export const POST = withRole("admin", async (req) => {
       },
     });
 
+  const oldObjectKey = existingEpisode?.objectKey?.trim();
+  if (oldObjectKey && oldObjectKey !== resolvedObjectKey) {
+    await deleteS3Object(oldObjectKey).catch(() => null);
+  }
+
   return NextResponse.json({ success: true });
 });
 
@@ -166,6 +186,18 @@ export const DELETE = withRole("admin", async (req) => {
     return NextResponse.json({ error: "Invalid episodeId" }, { status: 400 });
   }
 
+  const episode = await db.query.animeEpisodes.findFirst({
+    where: eq(animeEpisodes.id, episodeId),
+    columns: { id: true, objectKey: true },
+  });
+  if (!episode) {
+    return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+  }
+
   await db.delete(animeEpisodes).where(eq(animeEpisodes.id, episodeId));
+  if (episode.objectKey?.trim()) {
+    await deleteS3Object(episode.objectKey).catch(() => null);
+  }
+
   return NextResponse.json({ success: true });
 });
