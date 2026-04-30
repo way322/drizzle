@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 
 export const ROLES = ["user", "admin"] as const;
 export type UserRole = (typeof ROLES)[number];
@@ -25,7 +25,7 @@ export async function createRequestContext(): Promise<RequestContext> {
   const userId = rawId ? Number.parseInt(String(rawId), 10) : null;
   const safeUserId = Number.isSafeInteger(userId) ? userId : null;
 
-  const rawRole = (session?.user as any)?.role as UserRole | undefined;
+  const rawRole = (session?.user as { role?: UserRole } | undefined)?.role;
   const role = rawRole && ROLES.includes(rawRole) ? rawRole : null;
 
   return { session, userId: safeUserId, role };

@@ -3,15 +3,13 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 function AuthErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const error = searchParams.get("error");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-
-  useEffect(() => {
+  const errorMessage = useMemo(() => {
     const messages: Record<string, string> = {
       OAuthSignin: "Ошибка при попытке входа через социальную сеть",
       OAuthCallback: "Ошибка при обработке ответа от социальной сети",
@@ -24,12 +22,7 @@ function AuthErrorContent() {
       SessionRequired: "Требуется войти в аккаунт",
       Default: "Произошла ошибка при аутентификации",
     };
-
-    if (error && messages[error]) {
-      setErrorMessage(messages[error]);
-    } else {
-      setErrorMessage(messages["Default"]);
-    }
+    return error && messages[error] ? messages[error] : messages.Default;
   }, [error]);
 
   const handleRetry = () => {

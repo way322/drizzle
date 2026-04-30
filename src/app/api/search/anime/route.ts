@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     end
   `.as("rank");
 
-    let query = db
+    const query = db
         .select({
             id: anime.id,
             title: anime.title,

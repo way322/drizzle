@@ -1,8 +1,23 @@
-# Kitsune (Next.js)
+# Kitsune — аниме-каталог с душой (и плеером)
 
-## Локальная разработка
+Привет. Это **Kitsune** — сайт, где можно листать каталог аниме, ставить статусы, собирать «любимое», оставлять комментарии и **смотреть серии** в своём плеере, если ты залогинен. Админка позволяет наполнять каталог, крутить жанры, модерировать комментарии и заливать видео в S3/MinIO.
 
-Скопируй `.env.example` в `.env`, задай `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
+Коротко, что внутри:
+
+- **Каталог и фильтры** — жанры, поиск, удобные чекбоксы (в т.ч. поиск по жанрам).
+- **Аккаунты** — регистрация, вход по паролю, опционально Google и Яндекс (NextAuth).
+- **Профиль** — списки, рейтинги, **«продолжить просмотр»** с красивой карточкой и прогрессом, загрузка **аватара** в хранилище.
+- **Страница тайтла** — постер, описание, кастомный **видеоплеер**: дубляжи, серии, скип интро/аутро, автоследующая серия, настройки пользователя.
+- **Комментарии** — вложенные ответы, лайки/дизлайки, жалобы, фильтр мата, **редактирование** своего комментария; админ и автор могут **удалить**.
+- **Админка** — отдельные разделы для аниме, плеера и модерации комментариев (баны на 1/7/14 дней и т.д.).
+
+Стек: **Next.js 16**, **React 19**, **Tailwind**, **Drizzle + Postgres**, **NextAuth**, **S3-совместимое хранилище**. Для продакшена удобно собрать **`npm run build`** и гонять **`npm run start`** (особенно если сайт торчит наружу через туннель — dev-режим с HMR там часто капризничает).
+
+---
+
+## Быстрый старт локально
+
+Скопируй `.env.example` → `.env`, заполни как минимум `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
 
 ```bash
 npm install
@@ -10,116 +25,56 @@ npm run db:migrate
 npm run dev
 ```
 
-Открой [http://localhost:3000](http://localhost:3000). По умолчанию **`npm run dev` идёт через Webpack** — на Windows Turbopack часто «зависает» на компиляции. Если нужен Turbopack: `npm run dev:turbo`.
+Открой [http://localhost:3000](http://localhost:3000). На Windows по умолчанию **`npm run dev` идёт через Webpack** — Turbopack иногда подвисает; если хочется именно он: `npm run dev:turbo`.
 
-Режим `dev` не использует Docker и не требует `SKIP_ENV_VALIDATION`.
+## Docker «всё в одном»
 
-## Docker: проверить, что всё работает
-
-Поднимается Postgres, применяются миграции Drizzle, затем приложение в production-режиме:
+Postgres, миграции, приложение в production-режиме:
 
 ```bash
 docker compose up --build
 ```
 
-Сборка по умолчанию тянет Node с **`mirror.gcr.io/library/node:20-alpine`** (тот же официальный образ, другой хост) — так реже бывает **TLS timeout** до `docker.io`. Если зеркало у тебя недоступно, в `.env` укажи `NODE_IMAGE=node:20-alpine`. Ошибка может вернуться **без изменений в проекте**: сеть, VPN, кэш Docker — запрос снова идёт в реестр.
+Сайт: [http://localhost:3000](http://localhost:3000). БД с хоста: `localhost:5432`, пользователь `kitsune`, пароль `kitsune`, база `kitsune`.
 
-Если раньше миграции падали и контейнер `migrate` выходил с ошибкой, сбрось том БД и подними заново:
+Если миграции когда-то ругались — можно сбросить том и поднять заново:
 
 ```bash
 docker compose down -v
 docker compose up --build
 ```
 
-- Сайт: [http://localhost:3000](http://localhost:3000)
-- БД с хоста: `localhost:5432`, пользователь `kitsune`, пароль `kitsune`, БД `kitsune`
+Образ Node по умолчанию тянется с **`mirror.gcr.io/library/node:20-alpine`** (реже ловим TLS timeout до Docker Hub). Нужен классический Hub — в `.env` задай `NODE_IMAGE=node:20-alpine`.
 
-**Google / Яндекс на входе:** в корне проекта в файле `.env` должны быть обе пары переменных (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, при необходимости `YANDEX_*`). Docker Compose подставляет их в сервис `web` (см. `docker-compose.yml`). Без них блок «или» и соцкнопки не показываются — так и задумано. Callback-URL в консолях провайдеров: `{NEXTAUTH_URL}/api/auth/callback/google` и `.../callback/yandex`.
+**OAuth:** в `.env` пары `GOOGLE_*` и при желании `YANDEX_*`. Callback’и в консолях провайдеров: `{NEXTAUTH_URL}/api/auth/callback/google` и `.../callback/yandex`.
 
-## Файл `sql.sql`: что это и как залить
+## Сид данных (`sql.sql`)
 
-**Что внутри.** Это не миграции Drizzle, а **готовые INSERT’ы** (аниме, постеры, жанры и т.д.) в уже существующие таблицы. В начале/конце файла обычно стоят `BEGIN` / `COMMIT` — импорт идёт одной транзакцией.
+Это не миграции Drizzle, а готовые `INSERT`’ы. Порядок строгий: **сначала миграции**, потом `sql.sql`.
 
-**Обязательный порядок:**
+- Профиль `seed` в compose: `docker compose --profile seed up --build` или `docker compose --profile seed up seed`.
+- Или вручную в уже поднятую БД:  
+  `docker compose exec -T db psql -U kitsune -d kitsune < sql.sql`  
+  В PowerShell:  
+  `Get-Content -Path .\sql.sql -Raw -Encoding utf8 | docker compose exec -T db psql -U kitsune -d kitsune`
 
-1. **Сначала схема БД** — через Drizzle: `npm run db:migrate` (локально/на сервере) или контейнер `migrate` в Docker. Пока таблиц `anime`, `anime_images`, `genres` и др. нет, `sql.sql` выполнять нельзя.
-2. **Потом** выполни `sql.sql` против той же базы.
+В конце `sql.sql` может быть тестовый админ — смотри комментарии в файле и `.env.example`; пароль после первого импорта лучше сменить.
 
-**Повторный импорт.** Часть вставок в `sql.sql` использует `ON CONFLICT DO NOTHING` (например жанры), часть — обычный `INSERT` в `anime`. Второй раз подряд тот же файл может **дублировать** строки в `anime`. Для «чистой» базы проще сделать `docker compose down -v` и поднять заново, либо руками очистить таблицы перед повторной заливкой.
+## Скрипты
 
-### Вариант A — Docker, профиль `seed` (автоматически после миграций)
+| Команда | Зачем |
+|--------|--------|
+| `npm run dev` | разработка |
+| `npm run build` / `npm run start` | прод-сборка |
+| `npm run db:migrate` | применить миграции |
+| `npm run db:generate` | сгенерить миграции после правок схемы |
+| `npm run db:studio` | Drizzle Studio |
 
-Один раз поднять сид вместе со стеком:
+## Деплой в двух фразах
 
-```bash
-docker compose --profile seed up --build
-```
+Собери образ при необходимости: `docker build -t kitsune --target runner .`  
+На серере выставь переменные как в `.env.example`; для облачного Postgres с TLS — `DATABASE_SSL=require` или `?sslmode=require` в URL. Миграции один раз: `npm run db:migrate` с боевым `DATABASE_URL`.
 
-Или стек уже работает, нужен только сид:
+---
 
-```bash
-docker compose --profile seed up seed
-```
-
-Сервис `seed` выполнит: `psql -h db -f /seed.sql` внутри сети compose.
-
-### Вариант B — Docker, стек уже запущен (ручная заливка в `db`)
-
-Из каталога с `docker-compose.yml` и файлом `sql.sql`:
-
-```bash
-docker compose exec -T db psql -U kitsune -d kitsune < sql.sql
-```
-
-**PowerShell** (кодировка UTF-8, весь файл):
-
-```powershell
-Get-Content -Path .\sql.sql -Raw -Encoding utf8 | docker compose exec -T db psql -U kitsune -d kitsune
-```
-
-### Вариант C — хостинг / облачный Postgres без Docker
-
-1. В панели создай БД, получи строку подключения.
-2. С локальной машины (где есть `psql` или GUI):
-
-   ```bash
-   psql "postgresql://USER:PASSWORD@HOST:5432/ИМЯ_БД" -v ON_ERROR_STOP=1 -f sql.sql
-   ```
-
-3. Либо открой `sql.sql` в **DBeaver**, **pgAdmin**, **TablePlus** и выполни скрипт на нужной базе (после миграций).
-
-**Переменные для приложения на хостинге** задай те же, что в `.env.example` (`DATABASE_URL`, `NEXTAUTH_*`, при необходимости OAuth).
-
-**Админ из `sql.sql`.** В конце файла добавлен пользователь **iliyamalihin@yandex.ru**: при первом импорте задаётся временный пароль **`KitsuneAdmin!2026`** (смени в настройках или через БД). Если этот email уже есть в таблице `users`, при повторном импорте обновится только **`role = admin`**, пароль не перезаписывается. Без импорта `sql.sql` эта строка не попадёт в БД — тогда создай админа вручную (SQL или смена `role` в БД).
-
-Переопределить секрет и URL (для продакшена за пределами localhost):
-
-```bash
-set NEXTAUTH_SECRET=...
-set NEXTAUTH_URL=https://your-domain.com
-docker compose up --build
-```
-
-На Linux/macOS: `NEXTAUTH_SECRET=... NEXTAUTH_URL=... docker compose up --build`.
-
-### Docker Hub: `TLS handshake timeout` / не тянется `node:20-alpine`
-
-Сообщение вида `failed to ... docker.io/library/node:20-alpine` и **`TLS handshake timeout`** — сеть до [Docker Hub](https://hub.docker.com) не успевает установить TLS (провайдер, регион, VPN, прокси). Это не баг приложения.
-
-**По умолчанию** в `Dockerfile` / `docker-compose` уже задано `mirror.gcr.io/library/node:20-alpine`. Если нужен именно Hub: в `.env` — `NODE_IMAGE=node:20-alpine`, затем `docker compose build --no-cache`.
-
-Проверка зеркала: `docker pull mirror.gcr.io/library/node:20-alpine`
-
-Дополнительно: VPN / другая сеть, прокси в Docker Desktop (*Settings → Resources → Proxies*), или глобальное зеркало в *Settings → Docker Engine* (`registry-mirrors`). Если образ уже есть локально (`docker images`), повторная сборка может не ходить в сеть за метаданными.
-
-## Деплой
-
-- Сборка образа приложения: `docker build -t kitsune --target runner .`
-- Переменные окружения: см. `.env.example`. Для облачного Postgres с TLS — `DATABASE_SSL=require` или `?sslmode=require` в URL.
-- Миграции на сервере: один раз выполни `npm run db:migrate` с боевым `DATABASE_URL` (или отдельный job из target `migrate` в `Dockerfile`).
-
-## Скрипты БД
-
-- `npm run db:migrate` — применить миграции
-- `npm run db:generate` — сгенерировать новые после изменения схемы
-- `npm run db:studio` — Drizzle Studio
+*Удачного просмотра — и пусть интро будет коротким.*

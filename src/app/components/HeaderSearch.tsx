@@ -40,7 +40,7 @@ export default function HeaderSearch() {
       const el = document.activeElement as HTMLElement | null;
       const tag = el?.tagName?.toLowerCase();
       const isTyping =
-        tag === "input" || tag === "textarea" || (el as any)?.isContentEditable;
+        tag === "input" || tag === "textarea" || Boolean(el?.isContentEditable);
 
       if (isTyping) return;
 
@@ -93,7 +93,7 @@ export default function HeaderSearch() {
         const data = await res.json().catch(() => ({}));
         setItems(Array.isArray(data.items) ? data.items : []);
         setOpen(true);
-      } catch (e) {
+      } catch {
       } finally {
         setLoading(false);
       }

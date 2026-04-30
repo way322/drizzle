@@ -1,8 +1,8 @@
-# Быстрая проверка в Docker (БД + миграции + Next.js)
+# Быстрая проверка в Docker (БД + миграции + S3-MinIO)
 #
 #   docker compose up --build
 #
-# Сайт: http://localhost:3000
+# MinIO Console: http://localhost:9001
 # Postgres (опционально с хоста): localhost:5432 user kitsune / kitsune
 #
 # Локальный npm run dev не затрагивается — используй свой .env как раньше.
@@ -37,7 +37,36 @@ services:
       db:
         condition: service_healthy
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - kitsune_s3:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-anime-videos}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY; do sleep 1; done &&
+      mc mb --ignore-existing local/$$S3_BUCKET &&
+      mc anonymous set download local/$$S3_BUCKET
+      "
+
   web:
+    profiles: ["legacy-web"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -75,3 +104,4 @@ services:
 
 volumes:
   kitsune_pg:
+  kitsune_s3:

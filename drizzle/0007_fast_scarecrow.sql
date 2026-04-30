@@ -1,0 +1,1 @@
+ALTER TABLE "user_player_settings" ADD COLUMN "auto_next_episode" boolean DEFAULT false NOT NULL;

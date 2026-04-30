@@ -1,13 +1,33 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { redirect } from "next/navigation";
 import { db } from "../../server/db";
-import { anime, animeImages, favorites, ratings, userAnimeStatus } from "../../server/db/schema";
+import {
+  anime,
+  animeEpisodes,
+  animeImages,
+  favorites,
+  ratings,
+  userAnimeProgress,
+  userAnimeStatus,
+} from "../../server/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import ProfileClient from "./ProfileClient";
+import { resolveClientAssetUrl } from "../../lib/s3";
 
 const ALLOWED = ["watching", "planned", "dropped", "completed", "loved"] as const;
 type TabKey = (typeof ALLOWED)[number];
+type WatchStatus = Exclude<TabKey, "loved">;
+type ProfileItem = {
+  animeId: number;
+  title: string;
+  releaseYear: number | null;
+  description: string | null;
+  posterUrl: string | null;
+  status: WatchStatus | null;
+  userRating: number | null;
+  loved: boolean;
+};
 
 type PageProps = {
   searchParams: Promise<{ tab?: string }>;
@@ -24,7 +44,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   }
 
   const sp = await searchParams;
-  const tab = (ALLOWED.includes(sp.tab as any) ? (sp.tab as TabKey) : "watching") as TabKey;
+  const tab: TabKey =
+    sp.tab && ALLOWED.includes(sp.tab as TabKey) ? (sp.tab as TabKey) : "watching";
 
   const countsRows = await db
     .select({
@@ -36,7 +57,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     .groupBy(userAnimeStatus.status);
 
   const counts = countsRows.reduce((acc, r) => {
-    acc[r.status as any] = Number(r.count);
+    const key = r.status as WatchStatus;
+    acc[key] = Number(r.count);
     return acc;
   }, {} as Record<string, number>);
 
@@ -47,10 +69,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   counts["loved"] = Number(lovedCountRow?.count ?? 0);
 
-  let items: any[] = [];
+  let items: ProfileItem[] = [];
 
   if (tab === "loved") {
-    items = await db
+    const lovedRows = await db
       .select({
         animeId: anime.id,
         title: anime.title,
@@ -68,8 +90,12 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       .leftJoin(ratings, and(eq(ratings.animeId, anime.id), eq(ratings.userId, userId)))
       .where(eq(favorites.userId, userId))
       .orderBy(desc(favorites.createdAt));
+    items = lovedRows.map((r) => ({
+      ...r,
+      status: (r.status as WatchStatus | null) ?? null,
+    }));
   } else {
-    items = await db
+    const statusRows = await db
       .select({
         animeId: anime.id,
         status: userAnimeStatus.status,
@@ -88,15 +114,54 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       .where(and(eq(userAnimeStatus.userId, userId), eq(userAnimeStatus.status, tab)))
       .orderBy(desc(userAnimeStatus.updatedAt));
 
-    items = items.map((r) => ({ ...r, loved: Boolean(r.loved) }));
+    items = statusRows.map((r) => ({
+      ...r,
+      status: (r.status as WatchStatus | null) ?? null,
+      loved: Boolean(r.loved),
+    }));
   }
+
+  const [resumeRow] = await db
+    .select({
+      animeId: anime.id,
+      title: anime.title,
+      posterUrl: animeImages.imageUrl,
+      episodeNumber: animeEpisodes.episodeNumber,
+      durationSec: animeEpisodes.durationSec,
+      progressSec: userAnimeProgress.progressSec,
+      progressDurationSec: userAnimeProgress.progressDurationSec,
+    })
+    .from(userAnimeProgress)
+    .innerJoin(anime, eq(userAnimeProgress.animeId, anime.id))
+    .innerJoin(animeEpisodes, eq(userAnimeProgress.episodeId, animeEpisodes.id))
+    .leftJoin(animeImages, and(eq(animeImages.animeId, anime.id), eq(animeImages.isPoster, true)))
+    .where(eq(userAnimeProgress.userId, userId))
+    .orderBy(desc(userAnimeProgress.updatedAt))
+    .limit(1);
 
   return (
     <ProfileClient
-      user={{ name: session.user.name, email: session.user.email }}
+      user={{
+        name: session.user.name,
+        email: session.user.email,
+        image: resolveClientAssetUrl(session.user.image ?? null),
+      }}
       counts={counts}
       initialTab={tab}
       initialItems={items}
+      resumeItem={
+        resumeRow
+          ? {
+              animeId: resumeRow.animeId,
+              title: resumeRow.title,
+              posterUrl: resumeRow.posterUrl,
+              episodeNumber: resumeRow.episodeNumber,
+              durationSec: resumeRow.durationSec,
+              progressDurationSec: resumeRow.progressDurationSec,
+              progressSec: resumeRow.progressSec,
+            }
+          : null
+      }
     />
   );
 }

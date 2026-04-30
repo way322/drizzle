@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { and, desc, eq, sql } from "drizzle-orm";
 
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { db } from "../server/db";
 import {
   anime as animeTable,
@@ -24,6 +24,7 @@ import {
   users as usersTable,
   ratings,
 } from "../server/db/schema";
+import type { SQL } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -65,9 +66,14 @@ export default async function Home() {
     .from(ratings)
     .groupBy(ratings.animeId)
     .as("ra");
+  const ratingAggCols = ratingAgg as unknown as {
+    animeId: typeof ratings.animeId;
+    avgRating: SQL<number>;
+    ratingsCount: SQL<number>;
+  };
 
-  const ratingVal = sql<number>`coalesce(${(ratingAgg as any).avgRating}, 0)`;
-  const ratingsCountVal = sql<number>`coalesce(${(ratingAgg as any).ratingsCount}, 0)`;
+  const ratingVal = sql<number>`coalesce(${ratingAggCols.avgRating}, 0)`;
+  const ratingsCountVal = sql<number>`coalesce(${ratingAggCols.ratingsCount}, 0)`;
 
   const [animeCountRow, genreCountRow, userCountRow, featuredAnime, latestAnime] =
     await Promise.all([
@@ -87,7 +93,7 @@ export default async function Home() {
           posterUrl: animeImages.imageUrl,
         })
         .from(animeTable)
-        .leftJoin(ratingAgg, eq((ratingAgg as any).animeId, animeTable.id))
+        .leftJoin(ratingAgg, eq(ratingAggCols.animeId, animeTable.id))
         .leftJoin(
           animeImages,
           and(eq(animeImages.animeId, animeTable.id), eq(animeImages.isPoster, true))
@@ -107,7 +113,7 @@ export default async function Home() {
           posterUrl: animeImages.imageUrl,
         })
         .from(animeTable)
-        .leftJoin(ratingAgg, eq((ratingAgg as any).animeId, animeTable.id))
+        .leftJoin(ratingAgg, eq(ratingAggCols.animeId, animeTable.id))
         .leftJoin(
           animeImages,
           and(eq(animeImages.animeId, animeTable.id), eq(animeImages.isPoster, true))

@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Ошибка регистрации:", err);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }

@@ -5,6 +5,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  allowedDevOrigins: [
+    "https://*.cloudpub.ru",
+    "http://*.cloudpub.ru",
+  ],
   turbopack: {
     root: process.cwd(),
   },
@@ -13,6 +17,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "shikimori.one",
+      },
+      {
+        protocol: "https",
+        hostname: "shikimori.io",
       },
       {
         protocol: "https",

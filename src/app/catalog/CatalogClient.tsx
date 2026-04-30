@@ -1,7 +1,7 @@
 // src/app/catalog/CatalogClient.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
@@ -52,7 +52,9 @@ const SORT_OPTIONS: SelectOption[] = [
 
 function statusToRu(v: string | null | undefined) {
     if (!v) return "—";
-    return (STATUS_LABELS as any)[v] ?? v;
+  return v in STATUS_LABELS
+    ? STATUS_LABELS[v as keyof typeof STATUS_LABELS]
+    : v;
 }
 
 function formatRating(v: number | null | undefined) {
@@ -79,6 +81,7 @@ export default function CatalogClient(props: {
 }) {
     const [panelOpen, setPanelOpen] = useState(false);
     const [genresOpen, setGenresOpen] = useState(true);
+    const [genreSearch, setGenreSearch] = useState("");
 
     const [status, setStatus] = useState<StatusKey>(props.initialFilters.status ?? "all");
     const [sort, setSort] = useState<SortKey>(props.initialFilters.sort ?? "new");
@@ -114,7 +117,7 @@ export default function CatalogClient(props: {
         });
     }, [status, sort, ratingOrder, yearOrder, yearFrom, yearTo, selectedGenres]);
 
-    const buildUrl = () => {
+    const buildUrl = useCallback(() => {
         const sp = new URLSearchParams();
 
         if (status !== "all") sp.set("status", status);
@@ -131,7 +134,7 @@ export default function CatalogClient(props: {
 
         const qs = sp.toString();
         return qs ? `/catalog?${qs}` : "/catalog";
-    };
+    }, [status, sort, ratingOrder, yearOrder, yearFrom, yearTo, selectedGenres]);
 
     useEffect(() => {
         if (!didMountRef.current) {
@@ -146,9 +149,9 @@ export default function CatalogClient(props: {
             }
         }, 250);
         return () => clearTimeout(t);
-    }, [filtersKey]);
+    }, [filtersKey, buildUrl]);
 
-    const fetchPage = async (offset: number) => {
+    const fetchPage = useCallback(async (offset: number) => {
         const sp = new URLSearchParams();
         sp.set("offset", String(offset));
         sp.set("limit", String(props.initialLimit));
@@ -174,7 +177,7 @@ export default function CatalogClient(props: {
             hasMore: Boolean(data.hasMore),
             nextOffset: Number.isFinite(Number(data.nextOffset)) ? Number(data.nextOffset) : offset,
         };
-    };
+    }, [props.initialLimit, status, sort, ratingOrder, yearOrder, yearFrom, yearTo, selectedGenres]);
 
     useEffect(() => {
         let cancelled = false;
@@ -208,7 +211,7 @@ export default function CatalogClient(props: {
             cancelled = true;
             clearTimeout(t);
         };
-    }, [filtersKey]);
+    }, [filtersKey, fetchPage, items.length]);
 
     useEffect(() => {
         const prevOverflow = document.body.style.overflow;
@@ -252,7 +255,7 @@ export default function CatalogClient(props: {
 
         obs.observe(el);
         return () => obs.disconnect();
-    }, [hasMore, loadingFirst, loadingMore, nextOffset, filtersKey]);
+    }, [hasMore, loadingFirst, loadingMore, nextOffset, fetchPage]);
 
     const reset = () => {
         setStatus("all");
@@ -281,6 +284,12 @@ export default function CatalogClient(props: {
         n += selectedGenres.length;
         return n;
     }, [status, sort, yearFrom, yearTo, selectedGenres]);
+
+    const filteredGenres = useMemo(() => {
+        const q = genreSearch.trim().toLowerCase();
+        if (!q) return props.allGenres;
+        return props.allGenres.filter((g) => g.toLowerCase().includes(q));
+    }, [props.allGenres, genreSearch]);
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#07070d]">
@@ -554,10 +563,16 @@ export default function CatalogClient(props: {
 
                                 {genresOpen && (
                                     <div className="custom-dropdown-scroll mt-2 max-h-64 overflow-auto rounded-2xl border border-white/10 bg-black/15 p-2 sm:p-3">
-                                        {props.allGenres.length === 0 ? (
+                                        <input
+                                            value={genreSearch}
+                                            onChange={(e) => setGenreSearch(e.target.value)}
+                                            placeholder="Поиск жанра…"
+                                            className="mb-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-gray-400 focus:border-purple-400/50"
+                                        />
+                                        {filteredGenres.length === 0 ? (
                                             <div className="text-sm text-gray-400">Жанров пока нет.</div>
                                         ) : (
-                                            props.allGenres.map((g) => {
+                                            filteredGenres.map((g) => {
                                                 const checked = selectedGenres.includes(g);
                                                 return (
                                                     <label

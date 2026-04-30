@@ -25,6 +25,15 @@ type PatchBody = {
   genres?: string[];
 };
 
+const ADMIN_STATUSES = ["ongoing", "completed", "hiatus"] as const;
+type AdminStatus = (typeof ADMIN_STATUSES)[number];
+
+function toAdminStatus(value: unknown): AdminStatus {
+  return ADMIN_STATUSES.includes(value as AdminStatus)
+    ? (value as AdminStatus)
+    : "ongoing";
+}
+
 function normalizeGenreNames(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
   const names = list
@@ -35,7 +44,7 @@ function normalizeGenreNames(list: unknown): string[] {
 }
 
 export const PATCH = withRole<RouteCtx>("admin", async (req, _ctx, routeCtx) => {
-  const params = routeCtx ? await Promise.resolve((routeCtx as any).params) : null;
+  const params = routeCtx ? await routeCtx.params : null;
   const animeId = Number.parseInt(params?.id ?? "", 10);
 
   if (!Number.isSafeInteger(animeId)) {
@@ -63,7 +72,7 @@ await tx
     ...(nextTitle !== undefined ? { title: nextTitle } : {}),
     ...(body.description !== undefined ? { description: body.description } : {}),
     ...(body.releaseYear !== undefined ? { releaseYear: body.releaseYear } : {}),
-    ...(body.status !== undefined ? { status: (body.status ?? "ongoing") as any } : {}),
+    ...(body.status !== undefined ? { status: toAdminStatus(body.status) } : {}),
     ...(nextExternalUrl !== undefined ? { externalUrl: nextExternalUrl } : {}),
   })
   .where(eq(anime.id, animeId));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
@@ -34,7 +34,6 @@ export default function SelectMenu({
   placement?: Placement;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -50,11 +49,7 @@ export default function SelectMenu({
     [options, value]
   );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const updateMenuPosition = () => {
+  const updateMenuPosition = useCallback(() => {
     const btn = buttonRef.current;
     const menu = menuRef.current;
     if (!btn) return;
@@ -85,7 +80,7 @@ export default function SelectMenu({
       left,
       width,
     });
-  };
+  }, [align, placement]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -101,7 +96,7 @@ export default function SelectMenu({
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [open, placement, align]);
+  }, [open, updateMenuPosition]);
 
   useEffect(() => {
     const onPointerDown = (e: MouseEvent) => {
@@ -143,7 +138,7 @@ export default function SelectMenu({
         />
       </button>
 
-      {mounted &&
+      {typeof document !== "undefined" &&
         open &&
         createPortal(
           <div

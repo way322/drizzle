@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import HeaderSearch from "./HeaderSearch";
 import MobileHeaderMenu from "./MobileHeaderMenu";
 
@@ -42,7 +42,7 @@ export default async function Header() {
                 Профиль
               </Link>
               <Link
-                href="/api/auth/signout?callbackUrl=/"
+                href="/auth/signout?callbackUrl=/"
                 className="text-white hover:text-purple-400 transition-colors"
               >
                 Выход

@@ -1,7 +1,7 @@
 // src/app/api/user/loved/route.ts
 import { NextResponse } from "next/server";
 import { db } from "../../../../server/db";
-import { anime, animeGenres, animeImages, favorites, genres, ratings, userAnimeStatus } from "../../../../server/db/schema";
+import { anime, animeImages, favorites, ratings, userAnimeStatus } from "../../../../server/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { withAuth } from "../../../../server/services/userService";
 

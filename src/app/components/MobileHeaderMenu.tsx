@@ -40,7 +40,7 @@ export default function MobileHeaderMenu({ isAuthed, isAdmin }: Props) {
     if (isAuthed) {
       items.push({ href: "/profile", label: "Профиль", icon: User });
       items.push({
-        href: "/api/auth/signout?callbackUrl=/",
+        href: "/auth/signout?callbackUrl=/",
         label: "Выход",
         icon: LogOut,
       });
@@ -51,10 +51,6 @@ export default function MobileHeaderMenu({ isAuthed, isAdmin }: Props) {
 
     return items;
   }, [isAdmin, isAuthed]);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -103,13 +99,14 @@ export default function MobileHeaderMenu({ isAuthed, isAdmin }: Props) {
               {links.map((link) => {
                 const Icon = link.icon;
                 const active =
-                  link.href !== "/api/auth/signout?callbackUrl=/" &&
+                  !link.href.startsWith("/auth/signout") &&
                   (pathname === link.href || pathname.startsWith(`${link.href}/`));
 
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
+                    onClick={() => setOpen(false)}
                     className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white transition ${
                       active
                         ? "bg-gradient-to-r from-purple-500/20 to-fuchsia-500/20 ring-1 ring-purple-400/30"

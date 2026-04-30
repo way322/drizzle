@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../server/db";
 import { anime, animeGenres, animeImages, genres, ratings } from "../../../../server/db/schema";
-import { and, desc, eq, sql, or, inArray } from "drizzle-orm";
+import { and, desc, eq, sql, or, inArray, type SQL } from "drizzle-orm";
 import { withRole } from "../../../../server/services/userService";
 
 type Body = {
@@ -16,6 +16,7 @@ type Body = {
 };
 
 const ADMIN_STATUSES = ["ongoing", "completed", "hiatus"] as const;
+type AdminStatus = (typeof ADMIN_STATUSES)[number];
 
 function normalizeGenreNames(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
@@ -58,12 +59,14 @@ export const GET = withRole("admin", async (req) => {
   const q = qRaw.slice(0, 80);
 
   const statusRaw = (searchParams.get("status") ?? "").trim();
-  const status = ADMIN_STATUSES.includes(statusRaw as any) ? statusRaw : "";
+  const status = ADMIN_STATUSES.includes(statusRaw as AdminStatus)
+    ? (statusRaw as AdminStatus)
+    : null;
 
   const limitRaw = Number(searchParams.get("limit") ?? "200");
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 500) : 200;
 
-  const whereParts: any[] = [];
+  const whereParts: SQL<unknown>[] = [];
 
   const idFromQuery = q ? parseIdQuery(q) : null;
 
@@ -71,15 +74,14 @@ export const GET = withRole("admin", async (req) => {
     whereParts.push(eq(anime.id, idFromQuery));
   } else if (q) {
     const pattern = `%${q}%`;
-    whereParts.push(
-      or(
-        sql<boolean>`${anime.title} ilike ${pattern}`,
-        sql<boolean>`coalesce(${anime.description}, '') ilike ${pattern}`
-      )
+    const searchOr = or(
+      sql<boolean>`${anime.title} ilike ${pattern}`,
+      sql<boolean>`coalesce(${anime.description}, '') ilike ${pattern}`
     );
+    if (searchOr) whereParts.push(searchOr);
   }
 
-  if (status) whereParts.push(eq(anime.status, status as any));
+  if (status) whereParts.push(eq(anime.status, status));
 
   const where = whereParts.length ? and(...whereParts) : undefined;
 
@@ -92,6 +94,10 @@ export const GET = withRole("admin", async (req) => {
     .from(ratings)
     .groupBy(ratings.animeId)
     .as("ra");
+  const ratingAggCols = ratingAgg as unknown as {
+    animeId: typeof ratings.animeId;
+    avgRating: SQL<number>;
+  };
 
   const genreAgg = db
     .select({
@@ -102,11 +108,15 @@ export const GET = withRole("admin", async (req) => {
     .innerJoin(genres, eq(animeGenres.genreId, genres.id))
     .groupBy(animeGenres.animeId)
     .as("ga");
+  const genreAggCols = genreAgg as unknown as {
+    animeId: typeof animeGenres.animeId;
+    genres: SQL<string[]>;
+  };
 
-  const ratingVal = sql<number>`coalesce(${(ratingAgg as any).avgRating}, 0)`;
-  const genresVal = sql<string[]>`coalesce(${(genreAgg as any).genres}, array[]::text[])`;
+  const ratingVal = sql<number>`coalesce(${ratingAggCols.avgRating}, 0)`;
+  const genresVal = sql<string[]>`coalesce(${genreAggCols.genres}, array[]::text[])`;
 
-  let query = db
+  const baseQuery = db
     .select({
       id: anime.id,
       title: anime.title,
@@ -119,13 +129,13 @@ export const GET = withRole("admin", async (req) => {
       genres: genresVal.as("genres"),
     })
     .from(anime)
-    .leftJoin(ratingAgg, eq((ratingAgg as any).animeId, anime.id))
+    .leftJoin(ratingAgg, eq(ratingAggCols.animeId, anime.id))
     .leftJoin(animeImages, and(eq(animeImages.animeId, anime.id), eq(animeImages.isPoster, true)))
-    .leftJoin(genreAgg, eq((genreAgg as any).animeId, anime.id))
+    .leftJoin(genreAgg, eq(genreAggCols.animeId, anime.id))
     .orderBy(desc(anime.createdAt))
     .limit(limit);
 
-  if (where) query = (query as any).where(where);
+  const query = where ? baseQuery.where(where) : baseQuery;
 
   const items = await query;
   return NextResponse.json({ items });
@@ -149,7 +159,9 @@ export const POST = withRole("admin", async (req) => {
         title,
         description: body.description ?? null,
         releaseYear: body.releaseYear ?? null,
-        status: (body.status ?? "ongoing") as any,
+        status: ADMIN_STATUSES.includes((body.status ?? "ongoing") as AdminStatus)
+          ? ((body.status ?? "ongoing") as AdminStatus)
+          : "ongoing",
         externalUrl,
       })
       .returning({ id: anime.id });

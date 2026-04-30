@@ -25,14 +25,30 @@ function parseGenresParam(raw?: string): string[] {
     .slice(0, 20);
 }
 
+const STATUS_VALUES = ["all", "ongoing", "completed", "hiatus"] as const;
+const SORT_VALUES = ["new", "rating", "year"] as const;
+const ORDER_VALUES = ["asc", "desc"] as const;
+
+type StatusKey = (typeof STATUS_VALUES)[number];
+type SortKey = (typeof SORT_VALUES)[number];
+type OrderKey = (typeof ORDER_VALUES)[number];
+
+function parseEnum<T extends readonly string[]>(
+  value: string | undefined,
+  allowed: T,
+  fallback: T[number]
+): T[number] {
+  return value && (allowed as readonly string[]).includes(value) ? value : fallback;
+}
+
 export default async function CatalogPage({ searchParams }: PageProps) {
 
   const sp = await searchParams;
 
-  const status = (sp.status ?? "all") as any;
-  const sort = (sp.sort ?? "new") as any;
-  const ratingOrder = (sp.ratingOrder ?? "desc") as any;
-  const yearOrder = (sp.yearOrder ?? "desc") as any;
+  const status: StatusKey = parseEnum(sp.status, STATUS_VALUES, "all");
+  const sort: SortKey = parseEnum(sp.sort, SORT_VALUES, "new");
+  const ratingOrder: OrderKey = parseEnum(sp.ratingOrder, ORDER_VALUES, "desc");
+  const yearOrder: OrderKey = parseEnum(sp.yearOrder, ORDER_VALUES, "desc");
 
   const yearFrom = (sp.yearFrom ?? "").trim();
   const yearTo = (sp.yearTo ?? "").trim();

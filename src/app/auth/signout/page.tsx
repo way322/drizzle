@@ -4,8 +4,19 @@ import { Suspense, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowLeft, LogOut, ShieldQuestion, User } from "lucide-react";
+
+function canRenderAvatar(url: string | null | undefined) {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host === "127.0.0.1" || host === "localhost") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function SignOutContent() {
   const searchParams = useSearchParams();
@@ -15,6 +26,8 @@ function SignOutContent() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const userName = session?.user?.name || "Пользователь";
   const userEmail = session?.user?.email || "Email не указан";
+  const avatarUrl = status === "authenticated" ? session?.user?.image : null;
+  const showAvatar = canRenderAvatar(avatarUrl);
 
   const handleSignOut = async () => {
     try {
@@ -55,14 +68,8 @@ function SignOutContent() {
             <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600">
-                  {status === "authenticated" && session?.user?.image ? (
-                    <Image
-                      src={session.user.image}
-                      alt={userName}
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 object-cover"
-                    />
+                  {showAvatar && avatarUrl ? (
+                    <img src={avatarUrl} alt={userName} className="h-12 w-12 object-cover" />
                   ) : (
                     <User className="h-6 w-6 text-white" />
                   )}

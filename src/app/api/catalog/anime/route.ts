@@ -2,12 +2,15 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../server/db";
 import { anime, animeGenres, animeImages, genres, ratings } from "../../../../server/db/schema";
-import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 
 type SortKey = "new" | "rating" | "year";
 type StatusKey = "all" | "ongoing" | "completed" | "hiatus";
 type RatingOrder = "desc" | "asc";
 type YearOrder = "desc" | "asc";
+const STATUS_VALUES: readonly StatusKey[] = ["all", "ongoing", "completed", "hiatus"];
+const SORT_VALUES: readonly SortKey[] = ["new", "rating", "year"];
+const ORDER_VALUES: readonly RatingOrder[] = ["desc", "asc"];
 
 function toInt(s: string | null, def: number) {
     const n = Number.parseInt(String(s ?? ""), 10);
@@ -26,9 +29,18 @@ function parseGenresParam(raw: string | null): string[] {
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
-    const status = (searchParams.get("status") ?? "all") as StatusKey;
-    const sort = (searchParams.get("sort") ?? "new") as SortKey;
-    const ratingOrder = (searchParams.get("ratingOrder") ?? "desc") as RatingOrder;
+    const statusRaw = searchParams.get("status") ?? "all";
+    const sortRaw = searchParams.get("sort") ?? "new";
+    const ratingOrderRaw = searchParams.get("ratingOrder") ?? "desc";
+    const status: StatusKey = STATUS_VALUES.includes(statusRaw as StatusKey)
+        ? (statusRaw as StatusKey)
+        : "all";
+    const sort: SortKey = SORT_VALUES.includes(sortRaw as SortKey)
+        ? (sortRaw as SortKey)
+        : "new";
+    const ratingOrder: RatingOrder = ORDER_VALUES.includes(ratingOrderRaw as RatingOrder)
+        ? (ratingOrderRaw as RatingOrder)
+        : "desc";
     const yearOrderRaw = searchParams.get("yearOrder") ?? "desc";
     const yearOrder: YearOrder = yearOrderRaw === "asc" ? "asc" : "desc";
 
@@ -51,10 +63,15 @@ export async function GET(req: Request) {
         .from(ratings)
         .groupBy(ratings.animeId)
         .as("ra");
+    const ratingAggCols = ratingAgg as unknown as {
+        animeId: typeof ratings.animeId;
+        avgRating: SQL<number>;
+        ratingsCount: SQL<number>;
+    };
 
-    const whereParts: any[] = [];
+    const whereParts: SQL<unknown>[] = [];
 
-    if (status !== "all") whereParts.push(eq(anime.status, status as any));
+    if (status !== "all") whereParts.push(eq(anime.status, status));
     if (yearFrom != null) whereParts.push(gte(anime.releaseYear, yearFrom));
     if (yearTo != null) whereParts.push(lte(anime.releaseYear, yearTo));
 
@@ -74,10 +91,10 @@ export async function GET(req: Request) {
 
     const where = whereParts.length ? and(...whereParts) : undefined;
 
-    const ratingVal = sql<number>`coalesce(${(ratingAgg as any).avgRating}, 0)`;
-    const ratingsCountVal = sql<number>`coalesce(${(ratingAgg as any).ratingsCount}, 0)`;
+    const ratingVal = sql<number>`coalesce(${ratingAggCols.avgRating}, 0)`;
+    const ratingsCountVal = sql<number>`coalesce(${ratingAggCols.ratingsCount}, 0)`;
 
-    let orderBy: any[] = [desc(anime.createdAt)];
+    let orderBy: SQL<unknown>[] = [desc(anime.createdAt)];
     if (sort === "rating") {
         orderBy =
             ratingOrder === "asc"
@@ -97,7 +114,7 @@ export async function GET(req: Request) {
 
     const take = limit + 1;
 
-    let query = db
+    const baseQuery = db
         .select({
             id: anime.id,
             title: anime.title,
@@ -109,13 +126,13 @@ export async function GET(req: Request) {
             ratingsCount: ratingsCountVal.as("ratingsCount"),
         })
         .from(anime)
-        .leftJoin(ratingAgg, eq((ratingAgg as any).animeId, anime.id))
+        .leftJoin(ratingAgg, eq(ratingAggCols.animeId, anime.id))
         .leftJoin(animeImages, and(eq(animeImages.animeId, anime.id), eq(animeImages.isPoster, true)))
         .orderBy(...orderBy)
         .limit(take)
         .offset(offset);
 
-    if (where) query = (query as any).where(where);
+    const query = where ? baseQuery.where(where) : baseQuery;
 
     const rows = await query;
 

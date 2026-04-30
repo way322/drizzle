@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import SelectMenu, { type SelectOption } from "../components/SelectMenu";
+import AdminSectionNav from "./AdminSectionNav";
 
 type AdminAnimeItem = {
   id: number;
@@ -79,13 +80,16 @@ export default function AdminClient() {
 
   const [allGenres, setAllGenres] = useState<string[]>([]);
   const [newGenre, setNewGenre] = useState("");
+  const [genreSearch, setGenreSearch] = useState("");
   const [genresLoading, setGenresLoading] = useState(false);
 
   const loadGenres = async () => {
     setGenresLoading(true);
     const res = await fetch("/api/admin/genres", { cache: "no-store" });
     const data = await res.json().catch(() => ({}));
-    const names = Array.isArray(data.items) ? data.items.map((x: any) => String(x.name)) : [];
+    const names = Array.isArray(data.items)
+      ? data.items.map((x: { name?: unknown }) => String(x?.name ?? ""))
+      : [];
     setAllGenres(names);
     setGenresLoading(false);
   };
@@ -127,7 +131,10 @@ export default function AdminClient() {
   };
 
   useEffect(() => {
-    loadGenres();
+    const timer = setTimeout(() => {
+      void loadGenres();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -240,6 +247,12 @@ export default function AdminClient() {
     return parts.length ? parts.join(" • ") : "без фильтров";
   }, [query, statusFilter]);
 
+  const filteredGenres = useMemo(() => {
+    const q = genreSearch.trim().toLowerCase();
+    if (!q) return allGenres;
+    return allGenres.filter((g) => g.toLowerCase().includes(q));
+  }, [allGenres, genreSearch]);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#07070d]">
       <div className="absolute inset-0">
@@ -289,6 +302,8 @@ export default function AdminClient() {
               </button>
             </div>
           </div>
+
+          <AdminSectionNav active="anime" />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 rounded-[30px] border border-white/12 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-xl">
@@ -352,13 +367,19 @@ export default function AdminClient() {
                 </div>
 
                 <Field label="Жанры">
+                  <input
+                    value={genreSearch}
+                    onChange={(e) => setGenreSearch(e.target.value)}
+                    placeholder="Поиск жанра…"
+                    className="mb-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-gray-400 focus:border-purple-400/50"
+                  />
                   <div className="custom-dropdown-scroll max-h-56 space-y-2 overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3">
                     {genresLoading ? (
                       <div className="text-sm text-gray-400">Загрузка жанров…</div>
-                    ) : allGenres.length === 0 ? (
+                    ) : filteredGenres.length === 0 ? (
                       <div className="text-sm text-gray-400">Жанров пока нет. Добавь ниже.</div>
                     ) : (
-                      allGenres.map((g) => {
+                      filteredGenres.map((g) => {
                         const checked = form.genres.includes(g);
                         return (
                           <label
@@ -509,6 +530,7 @@ export default function AdminClient() {
                 Подсказка: если постеры с внешних доменов, добавь домен в{" "}
                 <code>next.config.ts</code>.
               </div>
+
             </div>
           </div>
         </div>

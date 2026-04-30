@@ -14,8 +14,10 @@ import {
   ratings,
   userAnimeStatus,
 } from "../../../server/db/schema";
-import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import AnimeUserActions from "../../components/AnimeUserActions";
+import AnimeComments from "../../components/AnimeComments";
+import AnimeWatchPlayer from "../../components/AnimeWatchPlayer";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -253,10 +255,6 @@ export default async function AnimePlayerPage({ params }: PageProps) {
                     <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
                       Смотреть онлайн
                     </div>
-
-                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-gray-300">
-                      iframe player
-                    </div>
                   </div>
 
                   <div className="max-w-xl">
@@ -270,35 +268,12 @@ export default async function AnimePlayerPage({ params }: PageProps) {
                 <div className="px-0 pb-0 sm:px-6 sm:pb-6">
                   <div className="relative overflow-hidden border-y border-white/10 bg-black sm:rounded-[26px] sm:border">
                     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/55 via-black/15 to-transparent" />
-                    <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2">
-                      <span className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-                        {item.releaseYear ?? "—"}
-                      </span>
-                      <span className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-                        Full width mobile
-                      </span>
-                    </div>
-
-                    <div className="aspect-[16/10] w-full sm:aspect-video">
-                      {item.externalUrl ? (
-                        <iframe
-                          src={item.externalUrl}
-                          title={item.title}
-                          className="h-full w-full"
-                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_35%)] px-6 text-center">
-                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
-                            Плеер недоступен
-                          </div>
-                          <div className="mt-3 max-w-xs text-sm leading-6 text-gray-400">
-                            Для этого аниме ещё не добавлена ссылка на онлайн просмотр.
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <AnimeWatchPlayer
+                      animeId={animeId}
+                      isAuthed={Number.isSafeInteger(userId)}
+                      fallbackExternalUrl={item.externalUrl}
+                      fallbackTitle={item.title}
+                    />
                   </div>
                 </div>
               </div>
@@ -356,6 +331,12 @@ export default async function AnimePlayerPage({ params }: PageProps) {
                 />
               </div>
             </div>
+
+            <AnimeComments
+              animeId={animeId}
+              userId={Number.isSafeInteger(userId) ? userId : null}
+              isAdmin={session?.user?.role === "admin"}
+            />
           </div>
         </div>
       </div>
