@@ -10,6 +10,7 @@ import {
   ratings,
   userAnimeProgress,
   userAnimeStatus,
+  userHiddenResume,
 } from "../../server/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import ProfileClient from "./ProfileClient";
@@ -121,7 +122,13 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     }));
   }
 
-  const [resumeRow] = await db
+  const hiddenRows = await db
+    .select({ animeId: userHiddenResume.animeId })
+    .from(userHiddenResume)
+    .where(eq(userHiddenResume.userId, userId));
+  const hiddenAnimeIds = new Set(hiddenRows.map((r) => r.animeId));
+
+  const progressRows = await db
     .select({
       animeId: anime.id,
       title: anime.title,
@@ -130,6 +137,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       durationSec: animeEpisodes.durationSec,
       progressSec: userAnimeProgress.progressSec,
       progressDurationSec: userAnimeProgress.progressDurationSec,
+      updatedAt: userAnimeProgress.updatedAt,
     })
     .from(userAnimeProgress)
     .innerJoin(anime, eq(userAnimeProgress.animeId, anime.id))
@@ -137,7 +145,34 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     .leftJoin(animeImages, and(eq(animeImages.animeId, anime.id), eq(animeImages.isPoster, true)))
     .where(eq(userAnimeProgress.userId, userId))
     .orderBy(desc(userAnimeProgress.updatedAt))
-    .limit(1);
+    .limit(30);
+
+  const resumeItems: Array<{
+    animeId: number;
+    title: string;
+    posterUrl: string | null;
+    episodeNumber: number;
+    durationSec: number | null;
+    progressDurationSec: number | null;
+    progressSec: number;
+  }> = [];
+
+  const seenAnime = new Set<number>();
+  for (const row of progressRows) {
+    if (seenAnime.has(row.animeId) || hiddenAnimeIds.has(row.animeId)) continue;
+    if (row.progressSec < 15) continue;
+    seenAnime.add(row.animeId);
+    resumeItems.push({
+      animeId: row.animeId,
+      title: row.title,
+      posterUrl: row.posterUrl,
+      episodeNumber: row.episodeNumber,
+      durationSec: row.durationSec,
+      progressDurationSec: row.progressDurationSec,
+      progressSec: row.progressSec,
+    });
+    if (resumeItems.length >= 2) break;
+  }
 
   return (
     <ProfileClient
@@ -149,19 +184,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       counts={counts}
       initialTab={tab}
       initialItems={items}
-      resumeItem={
-        resumeRow
-          ? {
-              animeId: resumeRow.animeId,
-              title: resumeRow.title,
-              posterUrl: resumeRow.posterUrl,
-              episodeNumber: resumeRow.episodeNumber,
-              durationSec: resumeRow.durationSec,
-              progressDurationSec: resumeRow.progressDurationSec,
-              progressSec: resumeRow.progressSec,
-            }
-          : null
-      }
+      resumeItems={resumeItems}
     />
   );
 }

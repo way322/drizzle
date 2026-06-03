@@ -2,6 +2,7 @@
 import { db } from "../../server/db";
 import { genres as genresTable } from "../../server/db/schema";
 import { asc } from "drizzle-orm";
+import { filterVisibleGenreNames } from "@/lib/genreFilters";
 import CatalogClient from "./CatalogClient";
 
 type PageProps = {
@@ -59,7 +60,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
     .from(genresTable)
     .orderBy(asc(genresTable.name));
 
-  const allGenres = allGenresRows.map((x) => x.name);
+  const allGenres = filterVisibleGenreNames(allGenresRows.map((x) => x.name));
 
   return (
     <CatalogClient

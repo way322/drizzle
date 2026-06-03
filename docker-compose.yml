@@ -80,6 +80,11 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-docker-dev-secret-change-in-real-deploy-32chars}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NODE_ENV: production
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-2}
+      FFMPEG_NICE: ${FFMPEG_NICE:-12}
+      FFMPEG_PRESET: ${FFMPEG_PRESET:-fast}
+      TRANSCODE_PAUSE_MS: ${TRANSCODE_PAUSE_MS:-3000}
       # Из корневого .env (рядом с compose): иначе кнопки Google/Яндекс скрыты
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

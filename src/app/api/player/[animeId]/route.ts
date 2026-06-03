@@ -9,7 +9,12 @@ import {
   userPlayerSettings,
 } from "../../../../server/db/schema";
 import { createRequestContext, requireAuth } from "../../../../server/services/userService";
-import { resolveClientAssetUrl } from "../../../../lib/s3";
+import { resolveClientAssetUrl, buildClientS3Url } from "../../../../lib/s3";
+import {
+  buildEpisodeQualityOptions,
+  isPreferredQuality,
+  parseStreamVariants,
+} from "../../../../lib/videoQuality";
 
 type RouteCtx = { params: Promise<{ animeId: string }> };
 
@@ -42,6 +47,7 @@ export async function GET(_req: Request, routeCtx: RouteCtx) {
       title: animeEpisodes.title,
       objectKey: animeEpisodes.objectKey,
       streamUrl: animeEpisodes.streamUrl,
+      streamVariants: animeEpisodes.streamVariants,
       introStartSec: animeEpisodes.introStartSec,
       introEndSec: animeEpisodes.introEndSec,
       outroStartSec: animeEpisodes.outroStartSec,
@@ -59,6 +65,7 @@ export async function GET(_req: Request, routeCtx: RouteCtx) {
       autoSkipIntro: true,
       autoSkipOutro: true,
       autoNextEpisode: true,
+      preferredQuality: true,
     },
   });
 
@@ -80,15 +87,46 @@ export async function GET(_req: Request, routeCtx: RouteCtx) {
 
   return NextResponse.json({
     dubbings,
-    episodes: episodes.map((ep) => ({
-      ...ep,
-      streamUrl: resolveClientAssetUrl(ep.streamUrl) ?? ep.streamUrl,
-    })),
+    episodes: episodes.map((ep) => {
+      const resolvedStreamUrl = resolveClientAssetUrl(ep.streamUrl) ?? ep.streamUrl;
+      let variants = {};
+      if (ep.streamVariants) {
+        try {
+          variants = parseStreamVariants(JSON.parse(ep.streamVariants));
+        } catch {
+          variants = {};
+        }
+      }
+      const qualities = buildEpisodeQualityOptions({
+        sourceObjectKey: ep.objectKey,
+        sourceStreamUrl: resolvedStreamUrl,
+        variants,
+        resolveUrl: (objectKey) => buildClientS3Url(objectKey),
+      });
+
+      return {
+        id: ep.id,
+        dubbingId: ep.dubbingId,
+        episodeNumber: ep.episodeNumber,
+        title: ep.title,
+        streamUrl: resolvedStreamUrl,
+        qualities,
+        introStartSec: ep.introStartSec,
+        introEndSec: ep.introEndSec,
+        outroStartSec: ep.outroStartSec,
+        outroEndSec: ep.outroEndSec,
+        durationSec: ep.durationSec,
+      };
+    }),
     settings: {
       preferredDubbingId: effectiveDubbingId,
       autoSkipIntro: settings?.autoSkipIntro ?? true,
       autoSkipOutro: settings?.autoSkipOutro ?? true,
       autoNextEpisode: settings?.autoNextEpisode ?? false,
+      preferredQuality:
+        settings?.preferredQuality && isPreferredQuality(settings.preferredQuality)
+          ? settings.preferredQuality
+          : "auto",
     },
     progress: progress
       ? {

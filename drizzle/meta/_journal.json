@@ -71,6 +71,20 @@
       "when": 1777545454136,
       "tag": "0009_spooky_pet_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777550000000,
+      "tag": "0010_video_quality_variants",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777551000000,
+      "tag": "0011_hidden_resume",
+      "breakpoints": true
     }
   ]
 }

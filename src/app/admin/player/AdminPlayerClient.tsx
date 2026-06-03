@@ -256,8 +256,42 @@ export default function AdminPlayerClient() {
       setError(data.error ?? "Не удалось сохранить серию");
       return;
     }
-    setMessage("Серия сохранена");
+    setMessage(
+      data.transcodeQueued
+        ? "Серия сохранена. 720p и 480p создаются в фоне (нужен ffmpeg на сервере)."
+        : "Серия сохранена"
+    );
     setEditingEpisodeId(null);
+    await loadAnime();
+  };
+
+  const transcodeEpisode = async (episodeId: number) => {
+    setError(null);
+    setMessage(null);
+    setMessage("Запускаю создание 720p / 480p...");
+    const res = await fetch("/api/admin/player/transcode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episodeId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Не удалось создать качества 720p/480p");
+      setMessage(null);
+      return;
+    }
+    if (data.started) {
+      setMessage(
+        data.message ??
+          "Транскод запущен в фоне. Подождите 1–5 минут и обновите страницу аниме."
+      );
+      return;
+    }
+    setMessage(
+      data.warnings?.length
+        ? `Готово с предупреждениями: ${data.warnings.join("; ")}`
+        : "Качества 720p и 480p созданы"
+    );
     await loadAnime();
   };
 
@@ -466,13 +500,24 @@ export default function AdminPlayerClient() {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={saveEpisode}
-              className="mt-3 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-4 py-2.5 font-semibold text-white"
-            >
-              {editingEpisodeId ? "Сохранить изменения" : "Сохранить серию"}
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={saveEpisode}
+                className="rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 px-4 py-2.5 font-semibold text-white"
+              >
+                {editingEpisodeId ? "Сохранить изменения" : "Сохранить серию"}
+              </button>
+              {editingEpisodeId && (
+                <button
+                  type="button"
+                  onClick={() => void transcodeEpisode(editingEpisodeId)}
+                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
+                >
+                  Создать 720p / 480p
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="rounded-[30px] border border-white/12 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-xl">

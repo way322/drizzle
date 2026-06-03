@@ -4,6 +4,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/api/admin/player/transcode": ["./node_modules/ffmpeg-static/**/*"],
+  },
   poweredByHeader: false,
   allowedDevOrigins: [
     "https://*.cloudpub.ru",

@@ -148,7 +148,6 @@ export const POST = withRole("admin", async (req) => {
   const externalUrl = (body.externalUrl ?? "").trim();
 
   if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
-  if (!externalUrl) return NextResponse.json({ error: "externalUrl is required" }, { status: 400 });
 
   const genreNames = normalizeGenreNames(body.genres);
 
@@ -162,7 +161,7 @@ export const POST = withRole("admin", async (req) => {
         status: ADMIN_STATUSES.includes((body.status ?? "ongoing") as AdminStatus)
           ? ((body.status ?? "ongoing") as AdminStatus)
           : "ongoing",
-        externalUrl,
+        externalUrl: externalUrl || "",
       })
       .returning({ id: anime.id });
 

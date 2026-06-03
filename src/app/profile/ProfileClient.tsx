@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import SelectMenu, { type SelectOption } from "../components/SelectMenu";
+import ContinueWatching, { type ResumeAnimeItem } from "./ContinueWatching";
 
 type WatchStatus = "watching" | "planned" | "dropped" | "completed";
 type TabKey = WatchStatus | "loved";
@@ -99,21 +100,13 @@ export default function ProfileClient({
   counts,
   initialTab,
   initialItems,
-  resumeItem,
+  resumeItems,
 }: {
   user: { name?: string | null; email?: string | null; image?: string | null };
   counts: Record<string, number>;
   initialTab: TabKey;
   initialItems: Item[];
-  resumeItem: {
-    animeId: number;
-    title: string;
-    posterUrl: string | null;
-    episodeNumber: number;
-    durationSec: number | null;
-    progressDurationSec: number | null;
-    progressSec: number;
-  } | null;
+  resumeItems: ResumeAnimeItem[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>(initialTab);
@@ -333,71 +326,7 @@ export default function ProfileClient({
               </Link>
             </div>
 
-            {resumeItem && (
-              <Link
-                href={`/anime/${resumeItem.animeId}`}
-                className="mt-5 block overflow-hidden rounded-2xl border border-purple-300/25 bg-purple-500/10 p-3 transition hover:bg-purple-500/15"
-              >
-                <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3">
-                  <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-black/25">
-                    {resumeItem.posterUrl ? (
-                      <Image
-                        src={resumeItem.posterUrl}
-                        alt={resumeItem.title}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-gray-400">
-                        No Image
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-xs uppercase tracking-[0.12em] text-purple-100/90">
-                      Продолжить просмотр
-                    </div>
-                    <div className="mt-0.5 line-clamp-1 text-sm font-semibold text-white">
-                      {resumeItem.title}
-                    </div>
-                    <div className="mt-0.5 text-xs text-purple-200/80">
-                      Эпизод {resumeItem.episodeNumber} •{" "}
-                      {Math.floor(resumeItem.progressSec / 60)}:
-                      {String(resumeItem.progressSec % 60).padStart(2, "0")}
-                    </div>
-
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-400"
-                        style={{
-                          width: `${
-                            (resumeItem.progressDurationSec ?? resumeItem.durationSec) &&
-                            (resumeItem.progressDurationSec ?? resumeItem.durationSec)! > 0
-                              ? Math.max(
-                                3,
-                                Math.min(
-                                  100,
-                                  Math.round(
-                                    (resumeItem.progressSec /
-                                      (resumeItem.progressDurationSec ?? resumeItem.durationSec!)) *
-                                      100
-                                  )
-                                )
-                              )
-                              : 12
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white">
-                    Смотреть
-                  </div>
-                </div>
-              </Link>
-            )}
+            <ContinueWatching initialItems={resumeItems} />
 
             <div className="-mx-1 mt-8 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 xl:grid-cols-5">
               {TABS.map((t) => (

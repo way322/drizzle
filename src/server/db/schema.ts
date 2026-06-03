@@ -233,6 +233,7 @@ export const animeEpisodes = pgTable(
     title: varchar("title", { length: 180 }),
     objectKey: text("object_key").notNull(),
     streamUrl: text("stream_url").notNull(),
+    streamVariants: text("stream_variants"),
     introStartSec: integer("intro_start_sec"),
     introEndSec: integer("intro_end_sec"),
     outroStartSec: integer("outro_start_sec"),
@@ -261,8 +262,25 @@ export const userPlayerSettings = pgTable("user_player_settings", {
   autoSkipIntro: boolean("auto_skip_intro").notNull().default(true),
   autoSkipOutro: boolean("auto_skip_outro").notNull().default(true),
   autoNextEpisode: boolean("auto_next_episode").notNull().default(false),
+  preferredQuality: varchar("preferred_quality", { length: 8 }).notNull().default("auto"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const userHiddenResume = pgTable(
+  "user_hidden_resume",
+  {
+    userId: integer("user_id")
+      .references(() => users.id)
+      .notNull(),
+    animeId: integer("anime_id")
+      .references(() => anime.id)
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.animeId] }),
+  })
+);
 
 export const userAnimeProgress = pgTable(
   "user_anime_progress",

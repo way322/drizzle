@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 
 export default function RegisterForm() {
@@ -10,10 +11,17 @@ export default function RegisterForm() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    if (!acceptedPolicy) {
+      setError("Необходимо принять политику пользователя и согласие на обработку данных");
+      return;
+    }
+
     setIsLoading(true);
 
     const form = e.currentTarget as HTMLFormElement;
@@ -137,9 +145,43 @@ export default function RegisterForm() {
           <p className="text-xs text-gray-500">Минимум 6 символов</p>
         </div>
 
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <input
+            type="checkbox"
+            checked={acceptedPolicy}
+            onChange={(e) => setAcceptedPolicy(e.target.checked)}
+            className="mt-1 h-4 w-4 shrink-0 rounded border-white/30 bg-white/10 accent-purple-500"
+          />
+          <span className="text-sm leading-6 text-gray-300">
+            Я соглашаюсь с{" "}
+            <Link
+              href="/legal/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-purple-300 underline underline-offset-2 transition hover:text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              политикой пользователя
+            </Link>{" "}
+            и даю согласие на обработку персональных данных
+          </span>
+        </label>
+
+        <p className="text-center text-xs leading-5 text-gray-500">
+          Ваши данные защищены и не передаются третьим лицам.{" "}
+          <Link
+            href="/legal/security"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-purple-300 underline underline-offset-2 transition hover:text-white"
+          >
+            Подробнее о безопасности
+          </Link>
+        </p>
+
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !acceptedPolicy}
           className="w-full py-4 px-6 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold rounded-xl hover:from-violet-700 hover:to-fuchsia-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg shadow-violet-500/25 flex items-center justify-center gap-3"
         >
           {isLoading ? (

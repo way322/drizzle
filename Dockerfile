@@ -42,12 +42,15 @@ ENV NODE_ENV=production
 RUN npm run build
 
 FROM base AS runner
+# ffmpeg для транскода 720p/480p (Alpine)
+RUN apk add --no-cache ffmpeg
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -55,6 +58,8 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Запасной бинарник ffmpeg (если не Alpine / не системный PATH)
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/ffmpeg-static ./node_modules/ffmpeg-static
 
 USER nextjs
 EXPOSE 3000

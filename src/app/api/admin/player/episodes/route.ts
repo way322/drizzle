@@ -5,6 +5,7 @@ import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../../../../../server/db";
 import { animeDubbings, animeEpisodes } from "../../../../../server/db/schema";
 import { withRole } from "../../../../../server/services/userService";
+import { parseStreamVariants, type StreamVariantsMap } from "../../../../../lib/videoQuality";
 import {
   buildClientS3Url,
   deleteS3Object,
@@ -12,6 +13,7 @@ import {
   getS3Bucket,
   getS3Client,
 } from "../../../../../lib/s3";
+import { transcodeEpisodeVariants } from "../../../../../server/services/videoTranscode";
 
 function parseTimeOrNull(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
@@ -116,7 +118,7 @@ export const POST = withRole("admin", async (req) => {
       eq(animeEpisodes.dubbingId, dubbingId),
       eq(animeEpisodes.episodeNumber, episodeNumber)
     ),
-    columns: { objectKey: true },
+    columns: { id: true, objectKey: true, streamVariants: true },
   });
 
   const bucket = getS3Bucket();
@@ -138,6 +140,8 @@ export const POST = withRole("admin", async (req) => {
     );
   }
 
+  const sourceChanged = existingEpisode?.objectKey?.trim() !== resolvedObjectKey;
+
   await db
     .insert(animeEpisodes)
     .values({
@@ -147,6 +151,7 @@ export const POST = withRole("admin", async (req) => {
       title,
       objectKey: resolvedObjectKey,
       streamUrl,
+      streamVariants: null,
       introStartSec,
       introEndSec,
       outroStartSec,
@@ -161,6 +166,7 @@ export const POST = withRole("admin", async (req) => {
         title,
         objectKey: resolvedObjectKey,
         streamUrl,
+        ...(sourceChanged ? { streamVariants: null } : {}),
         introStartSec,
         introEndSec,
         outroStartSec,
@@ -173,9 +179,41 @@ export const POST = withRole("admin", async (req) => {
   const oldObjectKey = existingEpisode?.objectKey?.trim();
   if (oldObjectKey && oldObjectKey !== resolvedObjectKey) {
     await deleteS3Object(oldObjectKey).catch(() => null);
+    let oldVariants: StreamVariantsMap = {};
+    if (existingEpisode?.streamVariants) {
+      try {
+        oldVariants = parseStreamVariants(JSON.parse(existingEpisode.streamVariants));
+      } catch {
+        oldVariants = {};
+      }
+    }
+    await Promise.all(
+      Object.values(oldVariants)
+        .filter((key): key is string => Boolean(key?.trim()))
+        .map((key) => deleteS3Object(key).catch(() => null))
+    );
   }
 
-  return NextResponse.json({ success: true });
+  const savedEpisode = await db.query.animeEpisodes.findFirst({
+    where: and(
+      eq(animeEpisodes.animeId, animeId),
+      eq(animeEpisodes.dubbingId, dubbingId),
+      eq(animeEpisodes.episodeNumber, episodeNumber)
+    ),
+    columns: { id: true },
+  });
+
+  if (savedEpisode?.id) {
+    void transcodeEpisodeVariants(savedEpisode.id).catch((err) => {
+      console.error("Background transcode failed:", err);
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    episodeId: savedEpisode?.id ?? null,
+    transcodeQueued: Boolean(savedEpisode?.id),
+  });
 });
 
 export const DELETE = withRole("admin", async (req) => {
@@ -188,7 +226,7 @@ export const DELETE = withRole("admin", async (req) => {
 
   const episode = await db.query.animeEpisodes.findFirst({
     where: eq(animeEpisodes.id, episodeId),
-    columns: { id: true, objectKey: true },
+    columns: { id: true, objectKey: true, streamVariants: true },
   });
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
@@ -198,6 +236,19 @@ export const DELETE = withRole("admin", async (req) => {
   if (episode.objectKey?.trim()) {
     await deleteS3Object(episode.objectKey).catch(() => null);
   }
+  let variants: StreamVariantsMap = {};
+  if (episode.streamVariants) {
+    try {
+      variants = parseStreamVariants(JSON.parse(episode.streamVariants));
+    } catch {
+      variants = {};
+    }
+  }
+  await Promise.all(
+    Object.values(variants)
+      .filter((key): key is string => Boolean(key?.trim() && key !== episode.objectKey))
+      .map((key) => deleteS3Object(key).catch(() => null))
+  );
 
   return NextResponse.json({ success: true });
 });

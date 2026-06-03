@@ -1,4 +1,13 @@
-import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { createWriteStream } from "node:fs";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 function getOptional(name: string) {
   return process.env[name]?.trim() || "";
@@ -141,6 +150,88 @@ export function getS3Client() {
       secretAccessKey: cfg.secretKey,
     },
   });
+}
+
+export async function s3ObjectExists(objectKey: string) {
+  const key = objectKey.trim().replace(/^\/+/, "");
+  if (!key) return false;
+
+  const client = getS3Client();
+  const bucket = getS3Bucket();
+  try {
+    await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function bodyToBuffer(body: unknown) {
+  if (!body) return Buffer.alloc(0);
+  if (Buffer.isBuffer(body)) return body;
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (body instanceof Readable) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  if (typeof (body as { transformToByteArray?: () => Promise<Uint8Array> }).transformToByteArray === "function") {
+    const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+    return Buffer.from(bytes);
+  }
+  return Buffer.alloc(0);
+}
+
+export async function downloadS3Object(objectKey: string) {
+  const key = objectKey.trim().replace(/^\/+/, "");
+  const client = getS3Client();
+  const bucket = getS3Bucket();
+  const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  return bodyToBuffer(res.Body);
+}
+
+export async function downloadS3ObjectToFile(objectKey: string, destPath: string) {
+  const key = objectKey.trim().replace(/^\/+/, "");
+  const client = getS3Client();
+  const bucket = getS3Bucket();
+  const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+
+  if (!res.Body) {
+    throw new Error("S3 object body is empty");
+  }
+
+  const body = res.Body;
+  if (body instanceof Readable) {
+    await pipeline(body, createWriteStream(destPath));
+    return;
+  }
+
+  const buffer = await bodyToBuffer(body);
+  if (!buffer.length) {
+    throw new Error("S3 object body is empty");
+  }
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(destPath, buffer);
+}
+
+export async function uploadS3Object(params: {
+  objectKey: string;
+  body: Buffer;
+  contentType?: string;
+}) {
+  const key = params.objectKey.trim().replace(/^\/+/, "");
+  const client = getS3Client();
+  const bucket = getS3Bucket();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: params.body,
+      ContentType: params.contentType ?? "video/mp4",
+    })
+  );
 }
 
 export async function deleteS3Object(objectKey: string) {

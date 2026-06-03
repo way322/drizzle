@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { AlertTriangle, ThumbsDown, ThumbsUp } from "lucide-react";
+import CommentContent from "./CommentContent";
 
 type CommentItem = {
   id: number;
@@ -250,7 +251,7 @@ export default function AnimeComments({ animeId, userId, isAdmin }: Props) {
     const children = items.filter((x) => x.parentCommentId === parentId);
     return children.map((item) => (
       <div key={item.id} className={level > 0 ? "ml-4 mt-3 border-l border-white/10 pl-4" : ""}>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               {item.avatarUrl ? (
@@ -301,7 +302,7 @@ export default function AnimeComments({ animeId, userId, isAdmin }: Props) {
               </div>
             </div>
           ) : (
-            <p className="whitespace-pre-wrap text-sm leading-6 text-gray-200">{item.content}</p>
+            <CommentContent content={item.content} />
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">

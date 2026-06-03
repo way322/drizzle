@@ -186,8 +186,7 @@ export default function AdminClient() {
       genres: form.genres,
     };
 
-    if (!body.title) return alert("Введите title");
-    if (!body.externalUrl) return alert("Введите externalUrl (iframe url)");
+    if (!body.title) return alert("Введите название тайтла");
 
     setSaving(true);
 
@@ -416,11 +415,12 @@ export default function AdminClient() {
                   </div>
                 </Field>
 
-                <Field label="externalUrl (iframe)">
+                <Field label="Ссылка iframe (необязательно)">
                   <input
                     value={form.externalUrl}
                     onChange={(e) => setForm((p) => ({ ...p, externalUrl: e.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition focus:border-purple-400/50"
+                    placeholder="https://…"
+                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-gray-400 focus:border-purple-400/50"
                   />
                 </Field>
 
@@ -430,9 +430,6 @@ export default function AdminClient() {
                     onChange={(e) => setForm((p) => ({ ...p, posterUrl: e.target.value }))}
                     className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition focus:border-purple-400/50"
                   />
-                  <div className="mt-2 text-xs text-gray-400">
-                    Оставь пустым, чтобы удалить или не задавать постер.
-                  </div>
                 </Field>
 
                 <button

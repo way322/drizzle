@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "../../../../server/db";
-import { animeEpisodes, userAnimeProgress } from "../../../../server/db/schema";
+import { animeEpisodes, userAnimeProgress, userHiddenResume } from "../../../../server/db/schema";
 import { withAuth } from "../../../../server/services/userService";
 
 export const POST = withAuth(async (req, ctx) => {
@@ -27,6 +27,10 @@ export const POST = withAuth(async (req, ctx) => {
   if (!episode) {
     return NextResponse.json({ error: "Episode not found for anime" }, { status: 404 });
   }
+
+  await db
+    .delete(userHiddenResume)
+    .where(and(eq(userHiddenResume.userId, ctx.userId), eq(userHiddenResume.animeId, animeId)));
 
   await db
     .insert(userAnimeProgress)

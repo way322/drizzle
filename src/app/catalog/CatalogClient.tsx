@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import AnimeTitle from "../components/AnimeTitle";
 import { SlidersHorizontal } from "lucide-react";
 import SelectMenu, { type SelectOption } from "../components/SelectMenu";
 
@@ -382,9 +383,11 @@ export default function CatalogClient(props: {
                                                     </div>
                                                 </div>
 
-                                                <h3 className="mb-1 line-clamp-1 text-lg font-semibold text-white">
-                                                    {a.title}
-                                                </h3>
+                                                <AnimeTitle
+                                                    as="h3"
+                                                    title={a.title}
+                                                    className="mb-2 text-base font-semibold text-white sm:text-lg"
+                                                />
 
                                                 <p className="line-clamp-3 text-sm text-gray-300">
                                                     {a.description ?? "Описание отсутствует"}

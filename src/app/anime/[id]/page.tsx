@@ -17,6 +17,7 @@ import {
 import { authOptions } from "@/lib/authOptions";
 import AnimeUserActions from "../../components/AnimeUserActions";
 import AnimeComments from "../../components/AnimeComments";
+import AnimeTitle from "../../components/AnimeTitle";
 import AnimeWatchPlayer from "../../components/AnimeWatchPlayer";
 
 type PageProps = {
@@ -211,9 +212,12 @@ export default async function AnimePlayerPage({ params }: PageProps) {
                     Смотреть онлайн
                   </div>
 
-                  <h1 className="text-3xl font-bold text-white sm:text-4xl">
-                    {item.title}
-                  </h1>
+                  <AnimeTitle
+                    as="h1"
+                    variant="page"
+                    title={item.title}
+                    className="text-3xl font-bold leading-tight text-white sm:text-4xl"
+                  />
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <InfoBadge label="Год" value={String(item.releaseYear ?? "—")} />

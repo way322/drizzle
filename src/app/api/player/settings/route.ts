@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "../../../../server/db";
 import { animeDubbings, userPlayerSettings } from "../../../../server/db/schema";
+import { isPreferredQuality } from "../../../../lib/videoQuality";
 import { withAuth } from "../../../../server/services/userService";
 
 export const POST = withAuth(async (req, ctx) => {
@@ -19,9 +20,18 @@ export const POST = withAuth(async (req, ctx) => {
     typeof body?.autoSkipOutro === "boolean" ? body.autoSkipOutro : undefined;
   const autoNextEpisode =
     typeof body?.autoNextEpisode === "boolean" ? body.autoNextEpisode : undefined;
+  const preferredQualityRaw = body?.preferredQuality;
+  const preferredQuality =
+    preferredQualityRaw === undefined || preferredQualityRaw === null
+      ? undefined
+      : String(preferredQualityRaw).trim();
 
   if (preferredDubbingId !== null && !Number.isInteger(preferredDubbingId)) {
     return NextResponse.json({ error: "Invalid preferredDubbingId" }, { status: 400 });
+  }
+
+  if (preferredQuality !== undefined && !isPreferredQuality(preferredQuality)) {
+    return NextResponse.json({ error: "Invalid preferredQuality" }, { status: 400 });
   }
 
   if (preferredDubbingId !== null) {
@@ -41,6 +51,7 @@ export const POST = withAuth(async (req, ctx) => {
       autoSkipOutro: true,
       autoNextEpisode: true,
       preferredDubbingId: true,
+      preferredQuality: true,
     },
   });
 
@@ -49,6 +60,12 @@ export const POST = withAuth(async (req, ctx) => {
   const nextAutoNextEpisode = autoNextEpisode ?? current?.autoNextEpisode ?? false;
   const nextPreferred =
     preferredDubbingId === undefined ? (current?.preferredDubbingId ?? null) : preferredDubbingId;
+  const nextPreferredQuality =
+    preferredQuality === undefined
+      ? (current?.preferredQuality && isPreferredQuality(current.preferredQuality)
+          ? current.preferredQuality
+          : "auto")
+      : preferredQuality;
 
   await db
     .insert(userPlayerSettings)
@@ -58,6 +75,7 @@ export const POST = withAuth(async (req, ctx) => {
       autoSkipIntro: nextIntro,
       autoSkipOutro: nextOutro,
       autoNextEpisode: nextAutoNextEpisode,
+      preferredQuality: nextPreferredQuality,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -67,6 +85,7 @@ export const POST = withAuth(async (req, ctx) => {
         autoSkipIntro: nextIntro,
         autoSkipOutro: nextOutro,
         autoNextEpisode: nextAutoNextEpisode,
+        preferredQuality: nextPreferredQuality,
         updatedAt: new Date(),
       },
     });

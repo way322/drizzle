@@ -59,10 +59,6 @@ export const PATCH = withRole<RouteCtx>("admin", async (req, _ctx, routeCtx) => 
   if (nextTitle !== undefined && !nextTitle) {
     return NextResponse.json({ error: "title cannot be empty" }, { status: 400 });
   }
-  if (nextExternalUrl !== undefined && !nextExternalUrl) {
-    return NextResponse.json({ error: "externalUrl cannot be empty" }, { status: 400 });
-  }
-
   const genreNames = body.genres !== undefined ? normalizeGenreNames(body.genres) : null;
 
   await db.transaction(async (tx) => {
