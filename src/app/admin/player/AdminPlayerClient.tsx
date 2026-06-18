@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import SelectMenu, { type SelectOption } from "../../components/SelectMenu";
+
 type Dubbing = {
   id: number;
   title: string;
@@ -34,6 +36,7 @@ export default function AdminPlayerClient() {
   const [animeIdInput, setAnimeIdInput] = useState("");
   const [payload, setPayload] = useState<AnimePayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +54,7 @@ export default function AdminPlayerClient() {
     animeId: number;
     dubbingId: number;
     episodeNumber: number;
+    objectKey: string;
   } | null>(null);
   const [introStart, setIntroStart] = useState("");
   const [introEnd, setIntroEnd] = useState("");
@@ -58,29 +62,82 @@ export default function AdminPlayerClient() {
   const [outroEnd, setOutroEnd] = useState("");
   const [editingEpisodeId, setEditingEpisodeId] = useState<number | null>(null);
 
-  const sanitizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const resolveStreamUrl = async (objectKey: string) => {
+    const key = objectKey.trim();
+    if (!key) return "";
+    const res = await fetch("/api/admin/player/object-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ objectKey: key }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return "";
+    return String(data.streamUrl ?? "");
+  };
 
-  const generateObjectKey = () => {
+  const applyObjectKeyPair = (objectKey: string, streamUrl: string) => {
+    setEpObjectKey(objectKey);
+    setEpStreamUrl(streamUrl);
+  };
+
+  const generateObjectKey = async () => {
     if (!payload || !epDubbingId || !epNumber) {
       setError("Сначала выбери тайтл, озвучку и номер серии");
       return;
     }
-    const animeId = payload.anime.id;
-    const dubbingId = Number(epDubbingId);
-    const episodeNumber = Number(epNumber);
-    const fileName = sanitizeFileName((lastPickedFileName || "episode.mp4").trim());
-    const stamp = Date.now();
-    setEpObjectKey(
-      `anime/${animeId}/dubbing/${dubbingId}/episode-${episodeNumber}/${stamp}-${fileName}`
-    );
-    setMessage("Object key сгенерирован");
+    if (uploadedFor) {
+      setError(
+        "Видео уже загружено в S3. Не генерируй новый key — иначе путь не совпадёт с файлом. Сохрани серию или сбрось форму."
+      );
+      return;
+    }
     setError(null);
+    setMessage(null);
+
+    const res = await fetch("/api/admin/player/object-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        animeId: payload.anime.id,
+        dubbingId: Number(epDubbingId),
+        episodeNumber: Number(epNumber),
+        fileName: lastPickedFileName || "episode.mp4",
+        title: epTitle || null,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Не удалось сгенерировать object key");
+      return;
+    }
+
+    applyObjectKeyPair(String(data.objectKey ?? ""), String(data.streamUrl ?? ""));
+    setMessage("Object key и Stream URL сгенерированы");
+  };
+
+  const syncStreamUrlFromObjectKey = async (objectKey: string) => {
+    const trimmed = objectKey.trim();
+    if (!trimmed) {
+      setEpStreamUrl("");
+      return;
+    }
+    const streamUrl = await resolveStreamUrl(trimmed);
+    if (streamUrl) setEpStreamUrl(streamUrl);
   };
 
   const currentAnimeId = Number(animeIdInput);
   const canLoadAnime = Number.isInteger(currentAnimeId);
 
   const activeDubbings = payload?.dubbings ?? [];
+
+  const dubbingOptions = useMemo<SelectOption[]>(
+    () =>
+      activeDubbings.map((d) => ({
+        value: String(d.id),
+        label: `${d.title} (${d.language})${d.isDefault ? " • основная" : ""}`,
+      })),
+    [activeDubbings]
+  );
 
   const resetEpisodeForm = () => {
     setEpNumber("");
@@ -174,43 +231,48 @@ export default function AdminPlayerClient() {
   };
 
   const uploadToS3 = async (file: File) => {
-    if (!payload || !epDubbingId || !epNumber) return;
+    if (!payload || !epDubbingId || !epNumber) {
+      setError("Сначала выбери озвучку и номер серии, затем загружай видео");
+      return;
+    }
     setError(null);
     setMessage(null);
+    setUploading(true);
 
-    const urlRes = await fetch("/api/admin/player/upload-url", {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("animeId", String(payload.anime.id));
+    form.append("dubbingId", epDubbingId);
+    form.append("episodeNumber", epNumber);
+    form.append("fileName", file.name);
+    if (epObjectKey.trim() && !uploadedFor) {
+      form.append("objectKey", epObjectKey.trim());
+    }
+
+    const res = await fetch("/api/admin/player/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        animeId: payload.anime.id,
-        dubbingId: Number(epDubbingId),
-        episodeNumber: Number(epNumber),
-        fileName: file.name,
-        contentType: file.type || "video/mp4",
-      }),
+      body: form,
     });
-    const urlData = await urlRes.json().catch(() => ({}));
-    if (!urlRes.ok) {
-      setError(urlData.error ?? "Не удалось получить upload URL");
+    const data = await res.json().catch(() => ({}));
+    setUploading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Не удалось загрузить файл в S3");
       return;
     }
 
-    const putRes = await fetch(String(urlData.uploadUrl), {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "video/mp4" },
-      body: file,
-    });
-    if (!putRes.ok) {
-      setError("Ошибка загрузки файла в S3");
-      return;
+    const objectKey = String(data.objectKey ?? "");
+    let streamUrl = String(data.streamUrl ?? "");
+    if (!streamUrl && objectKey) {
+      streamUrl = await resolveStreamUrl(objectKey);
     }
 
-    setEpObjectKey(String(urlData.objectKey ?? ""));
-    setEpStreamUrl(String(urlData.streamUrl ?? ""));
+    applyObjectKeyPair(objectKey, streamUrl);
     setUploadedFor({
       animeId: payload.anime.id,
       dubbingId: Number(epDubbingId),
       episodeNumber: Number(epNumber),
+      objectKey,
     });
     setMessage("Видео загружено в S3. Сохрани серию.");
   };
@@ -237,12 +299,20 @@ export default function AdminPlayerClient() {
       uploadedFor &&
       uploadedFor.animeId === payload.anime.id &&
       uploadedFor.dubbingId === Number(epDubbingId) &&
-      uploadedFor.episodeNumber === Number(epNumber);
+      uploadedFor.episodeNumber === Number(epNumber) &&
+      uploadedFor.objectKey === epObjectKey.trim();
 
-    if (!isSameUploadedTarget && !epStreamUrl.trim()) {
+    const isNewEpisode = !editingEpisodeId;
+
+    if (isNewEpisode && !isSameUploadedTarget) {
       setError(
-        "Для этой озвучки/серии сначала загрузи файл в S3 (или укажи корректный Stream URL), потом сохраняй."
+        "Сначала загрузи видео через блок «Загрузка видео в S3» и дождись «Видео загружено в S3», затем сохраняй серию."
       );
+      return;
+    }
+
+    if (!isNewEpisode && !epObjectKey.trim() && !epStreamUrl.trim()) {
+      setError("У серии должен быть object key или Stream URL.");
       return;
     }
 
@@ -262,6 +332,7 @@ export default function AdminPlayerClient() {
         : "Серия сохранена"
     );
     setEditingEpisodeId(null);
+    setUploadedFor(null);
     await loadAnime();
   };
 
@@ -404,18 +475,18 @@ export default function AdminPlayerClient() {
               )}
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <select
-                value={epDubbingId}
-                onChange={(e) => setEpDubbingId(e.target.value)}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
-              >
-                <option value="">Озвучка</option>
-                {activeDubbings.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Озвучка</div>
+                <SelectMenu
+                  value={epDubbingId}
+                  options={dubbingOptions}
+                  onChange={setEpDubbingId}
+                  placeholder="Выбери озвучку"
+                  className="w-full"
+                  buttonClassName="rounded-2xl border-white/10 bg-black/20 px-4 py-3 hover:bg-black/30"
+                  menuClassName="border-white/12 bg-[#0b0b14]/98"
+                />
+              </div>
               <input
                 value={epNumber}
                 onChange={(e) => setEpNumber(e.target.value)}
@@ -432,18 +503,26 @@ export default function AdminPlayerClient() {
 
             <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
               <div className="text-sm text-gray-300">Загрузка видео в S3</div>
+              <p className="mt-1 text-xs text-gray-500">
+                Сначала выбери озвучку и номер серии. После загрузки дождись сообщения «Видео загружено в S3».
+              </p>
               <input
                 type="file"
                 accept="video/*"
+                disabled={uploading}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
                     setLastPickedFileName(file.name);
                     void uploadToS3(file);
                   }
+                  e.target.value = "";
                 }}
-                className="mt-2 text-sm text-gray-300"
+                className="mt-2 text-sm text-gray-300 disabled:opacity-50"
               />
+              {uploading && (
+                <div className="mt-1 text-xs text-amber-200">Загрузка в S3… не закрывай страницу.</div>
+              )}
               {lastPickedFileName && (
                 <div className="mt-1 text-xs text-gray-400">Файл: {lastPickedFileName}</div>
               )}
@@ -453,23 +532,26 @@ export default function AdminPlayerClient() {
               <input
                 value={epObjectKey}
                 onChange={(e) => setEpObjectKey(e.target.value)}
+                onBlur={(e) => void syncStreamUrlFromObjectKey(e.target.value)}
                 placeholder="S3 object key"
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
+                readOnly={Boolean(uploadedFor)}
+                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none read-only:opacity-90"
               />
               <input
                 value={epStreamUrl}
                 onChange={(e) => setEpStreamUrl(e.target.value)}
-                placeholder="Stream URL (если без S3)"
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
+                placeholder="Stream URL (заполняется автоматически)"
+                readOnly
+                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none opacity-90"
               />
             </div>
             <div className="mt-2">
               <button
                 type="button"
-                onClick={generateObjectKey}
+                onClick={() => void generateObjectKey()}
                 className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/15"
               >
-                Сгенерировать key
+                Сгенерировать key и Stream URL
               </button>
             </div>
 

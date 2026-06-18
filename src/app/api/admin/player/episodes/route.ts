@@ -9,10 +9,11 @@ import { parseStreamVariants, type StreamVariantsMap } from "../../../../../lib/
 import {
   buildClientS3Url,
   deleteS3Object,
-  getPublicS3BaseUrl,
+  extractObjectKeyFromS3Url,
   getS3Bucket,
   getS3Client,
 } from "../../../../../lib/s3";
+import { buildEpisodeObjectKey } from "../../../../../lib/s3ObjectKey";
 import { transcodeEpisodeVariants } from "../../../../../server/services/videoTranscode";
 
 function parseTimeOrNull(value: unknown) {
@@ -48,37 +49,6 @@ function parseTimeOrNull(value: unknown) {
   return null;
 }
 
-function slugifyPart(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
-
-function generateObjectKey(params: {
-  animeId: number;
-  dubbingId: number;
-  episodeNumber: number;
-  title: string | null;
-}) {
-  const titlePart = params.title ? slugifyPart(params.title) : "";
-  const stamp = Date.now();
-  const fileName = titlePart
-    ? `episode-${params.episodeNumber}-${titlePart}.mp4`
-    : `episode-${params.episodeNumber}.mp4`;
-  return `anime/${params.animeId}/dubbing/${params.dubbingId}/episode-${params.episodeNumber}/${stamp}-${fileName}`;
-}
-
-function extractObjectKeyFromStreamUrl(streamUrl: string) {
-  const publicBase = getPublicS3BaseUrl();
-  if (streamUrl.startsWith(`${publicBase}/`)) {
-    return streamUrl.slice(publicBase.length + 1);
-  }
-  return streamUrl.replace(/^https?:\/\/[^/]+\/[^/]+\//i, "");
-}
-
 export const POST = withRole("admin", async (req) => {
   const body = await req.json().catch(() => null);
 
@@ -108,8 +78,8 @@ export const POST = withRole("admin", async (req) => {
 
   const resolvedObjectKey =
     objectKey ||
-    (streamUrlRaw ? extractObjectKeyFromStreamUrl(streamUrlRaw) : "") ||
-    generateObjectKey({ animeId, dubbingId, episodeNumber, title });
+    (streamUrlRaw ? extractObjectKeyFromS3Url(streamUrlRaw) : "") ||
+    buildEpisodeObjectKey({ animeId, dubbingId, episodeNumber, title });
   const streamUrl = streamUrlRaw || buildClientS3Url(resolvedObjectKey);
 
   const existingEpisode = await db.query.animeEpisodes.findFirst({
@@ -133,8 +103,7 @@ export const POST = withRole("admin", async (req) => {
   } catch {
     return NextResponse.json(
       {
-        error:
-          "Файл не найден в S3 по этому пути. Сначала загрузи файл через блок 'Загрузка видео в S3', затем сохраняй серию.",
+        error: `Файл не найден в S3 по пути «${resolvedObjectKey}». Сначала загрузи файл через блок «Загрузка видео в S3» и дождись сообщения «Видео загружено в S3», затем сохраняй серию.`,
       },
       { status: 400 }
     );

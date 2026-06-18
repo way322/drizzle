@@ -39,10 +39,37 @@ export function isBlockedGenre(name: string) {
   return BLOCKED_GENRE_PARTS.some((part) => key.includes(part));
 }
 
+function pickPreferredGenreVariant(variants: string[]) {
+  const capitalized = variants.find((name) => {
+    const first = name.charAt(0);
+    return first === first.toUpperCase() && first !== first.toLowerCase();
+  });
+  return capitalized ?? variants[0];
+}
+
+export function dedupeGenreNames(names: string[]) {
+  const byKey = new Map<string, string[]>();
+
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (!trimmed || isBlockedGenre(trimmed)) continue;
+    const key = normalizeGenreKey(trimmed);
+    const list = byKey.get(key) ?? [];
+    list.push(trimmed);
+    byKey.set(key, list);
+  }
+
+  return Array.from(byKey.values())
+    .map((variants) => pickPreferredGenreVariant(variants))
+    .sort((a, b) => a.localeCompare(b, "ru"));
+}
+
 export function filterVisibleGenres<T extends { name: string }>(rows: T[]) {
-  return rows.filter((row) => !isBlockedGenre(row.name));
+  const names = dedupeGenreNames(rows.map((row) => row.name));
+  const allowed = new Set(names);
+  return rows.filter((row) => allowed.has(row.name));
 }
 
 export function filterVisibleGenreNames(names: string[]) {
-  return names.filter((name) => !isBlockedGenre(name));
+  return dedupeGenreNames(names);
 }

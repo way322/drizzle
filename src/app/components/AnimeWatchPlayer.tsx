@@ -956,11 +956,10 @@ export default function AnimeWatchPlayer({
                   className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-[#0d0d16] px-3 py-2 text-left text-white transition hover:border-purple-300/40"
                 >
                   <span>
-                    {episodes.find((ep) => ep.id === selectedEpisodeId)
-                      ? `${episodes.find((ep) => ep.id === selectedEpisodeId)?.episodeNumber}. ${
-                        episodes.find((ep) => ep.id === selectedEpisodeId)?.title ||
-                        `Эпизод ${episodes.find((ep) => ep.id === selectedEpisodeId)?.episodeNumber}`
-                      }`
+                    {selectedEpisode
+                      ? `${selectedEpisode.episodeNumber}. ${
+                          selectedEpisode.title || `Эпизод ${selectedEpisode.episodeNumber}`
+                        }`
                       : "Выбери серию"}
                   </span>
                   <ChevronDown
@@ -997,7 +996,6 @@ export default function AnimeWatchPlayer({
                   </div>
                 </div>
               </div>
-
             </div>
           )}
           <div className="aspect-[16/10] w-full sm:aspect-video">

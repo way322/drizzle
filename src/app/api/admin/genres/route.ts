@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../server/db";
 import { genres } from "../../../../server/db/schema";
 import { asc, eq } from "drizzle-orm";
-import { filterVisibleGenres, isBlockedGenre } from "@/lib/genreFilters";
+import {
+  filterVisibleGenres,
+  isBlockedGenre,
+  normalizeGenreKey,
+} from "@/lib/genreFilters";
 import { withRole } from "../../../../server/services/userService";
 
 export const GET = withRole("admin", async () => {
@@ -20,6 +24,17 @@ export const POST = withRole("admin", async (req) => {
   if (isBlockedGenre(name)) {
     return NextResponse.json({ error: "Этот жанр нельзя добавить" }, { status: 400 });
   }
+
+  const existing = await db.select({ name: genres.name }).from(genres);
+  const key = normalizeGenreKey(name);
+  const duplicate = existing.find((row) => normalizeGenreKey(row.name) === key);
+  if (duplicate) {
+    return NextResponse.json(
+      { error: `Жанр уже есть: «${duplicate.name}»` },
+      { status: 400 }
+    );
+  }
+
   await db.insert(genres).values({ name }).onConflictDoNothing();
   const row = await db.query.genres.findFirst({ where: eq(genres.name, name) });
   return NextResponse.json({ ok: true, item: row ? { id: row.id, name: row.name } : null });
